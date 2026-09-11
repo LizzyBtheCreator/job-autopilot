@@ -303,7 +303,7 @@ const baseQueries: Record<Category, string[]> = {
     'project manager contract remote',
     'contracts manager temp remote',
     'proposal writer contract remote',
-    'capture manager contract',
+    'capture manager contract federal',
     'grants manager contract remote',
     'federal awards administrator contract',
     'compliance manager contract remote federal',
@@ -716,13 +716,17 @@ function scoreJob(title: string, _company: string, description: string, category
     // Remote confirmation bonus
     if (/remote|work from home/.test(text)) { score += 5; matched.push('remote') }
     // Exact skill matches
-    if (/shipley|idiq|gwac|ota|far|dfars|capture|proposal|sam\.gov/.test(text)) { score += 5; matched.push('govcon skills') }
+    // "capture" only counts in federal context — prevent matching document capture / OCR software roles
+    if (/shipley|idiq|gwac|ota|far|dfars|sam\.gov/.test(text)) { score += 5; matched.push('govcon skills') }
+    if (/proposal/.test(text)) { score += 5; matched.push('govcon skills') }
+    if (/\bcapture\b/.test(text) && /federal|dod|defense|government contract|military|civilian agency|govcon/.test(text)) { score += 5; matched.push('capture federal') }
     // Negative signals — only hard disqualifiers
     if (/engineer|software developer|devops|data scientist|machine learning|ml engineer|applied ai|artificial intelligence engineer/.test(titleLower) &&
         !/procurement engineer|systems engineer|proposal engineer/.test(titleLower)) { score -= 40 }
   } else if (category === 'temp') {
     // Temp jobs — anything from a staffing agency site is likely relevant
-    if (/proposal|capture|business development|program manager|contracts|coordinator|operations/.test(text)) { score += 10; matched.push('temp role match') }
+    if (/proposal|business development|program manager|contracts|coordinator|operations/.test(text)) { score += 10; matched.push('temp role match') }
+    if (/\bcapture\b/.test(text) && /federal|dod|defense|government contract|military|govcon/.test(text)) { score += 10; matched.push('capture federal') }
   } else if (category === 'sales') {
     if (/sales|account executive|business development|revenue|quota/.test(text)) { score += 20; matched.push('sales role') }
     if (/saas|software|technology|cloud/.test(text)) { score += 10; matched.push('tech sales') }
