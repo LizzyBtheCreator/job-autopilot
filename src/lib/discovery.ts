@@ -450,8 +450,7 @@ function scoreJob(title: string, _company: string, description: string, _categor
   const titleLower = title.toLowerCase()
   const matched: string[] = []
 
-  // HARD FILTER 1: Only reject if explicitly confirmed NOT remote
-  if (isRemote === false) return { score: 0, notes: 'confirmed not remote' }
+  // Remote is preferred but not a hard filter — queries already target remote roles
 
   // HARD FILTER 2: Title must contain a proposal or capture keyword
   const proposalCaptureTitles = [
