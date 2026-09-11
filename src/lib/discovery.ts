@@ -7,60 +7,11 @@ import { PLATFORMS, ALL_PLATFORMS, type PlatformKey, TEMP_AGENCIES, ALL_TEMP_AGE
 // components should import these directly from '@/lib/platforms' instead.
 export { PLATFORMS, ALL_PLATFORMS, type PlatformKey, TEMP_AGENCIES, ALL_TEMP_AGENCIES, type TempAgencyKey }
 
-// Base keyword queries — each will be run once per selected platform
-// One platform per query so no platform gets crowded out by higher-authority domains
+// Base keyword queries — capture and proposal roles only, remote required
 const baseQueries: Record<Category, string[]> = {
-  sales: [
-    // Technical Account Manager / Customer Success — govtech and federal SaaS
-    '"technical account manager" remote federal',
-    '"technical account manager" remote government',
-    '"technical account manager" remote SaaS federal',
-    '"federal customer success manager" remote',
-    '"customer success manager" remote federal government',
-    '"senior customer success manager" remote federal',
-    '"director of customer success" remote federal',
-    // Partner / Channel / Alliance
-    '"partner development manager" remote federal',
-    '"partner development manager" remote government',
-    '"alliance manager" remote federal',
-    '"channel partner manager" remote government',
-    // Revenue Operations
-    '"revenue operations manager" remote',
-    '"RevOps manager" remote',
-    '"senior revenue operations manager" remote',
-    '"director of revenue operations" remote',
-    // Solutions Consultant / pre-sales
-    '"solutions consultant" remote federal',
-    '"solutions consultant" remote government',
-    '"pre-sales consultant" remote federal',
-    '"solutions architect" remote federal SaaS',
-    // Staffing / workforce BD
-    '"workforce solutions manager" remote federal',
-    '"federal staffing manager" remote',
-    '"government services manager" remote staffing',
-    // SaaS implementation / onboarding / operations
-    '"implementation manager" remote SaaS',
-    '"senior implementation manager" remote SaaS',
-    '"customer onboarding manager" remote SaaS',
-    '"onboarding manager" remote SaaS federal',
-    '"technical program manager" remote SaaS',
-    '"technical program manager" remote government',
-    '"product operations manager" remote SaaS',
-    '"partnerships manager" remote SaaS',
-    '"director of partnerships" remote SaaS',
-    '"implementation consultant" remote government',
-    '"deployment manager" remote SaaS federal',
-    // Franchise development
-    '"franchise development manager" remote',
-    '"director of franchise development" remote',
-    '"franchise sales manager" remote',
-    '"franchise development director" remote',
-    '"VP franchise development" remote',
-    '"franchise business development" manager remote',
-    '"franchise growth manager" remote',
-  ],
+  sales: [],
   govcon: [
-    // Proposal management
+    // Proposal manager — all levels
     '"proposal manager" remote federal',
     '"proposal manager" remote defense',
     '"proposal manager" remote DoD',
@@ -69,246 +20,49 @@ const baseQueries: Record<Category, string[]> = {
     '"proposal manager" remote cybersecurity federal',
     '"proposal manager" remote aerospace',
     '"proposal manager" remote "intelligence community"',
-    // Senior / Director
     '"senior proposal manager" remote federal',
     '"senior proposal manager" remote defense',
     '"director of proposals" remote federal',
     '"proposal director" remote federal',
-    '"director of capture" remote federal',
-    // Capture management
+    '"VP of proposals" remote federal',
+    // Capture manager — all levels
     '"capture manager" remote federal',
     '"senior capture manager" remote federal',
     '"capture manager" remote defense',
     '"capture manager" remote DoD',
+    '"director of capture" remote federal',
+    '"VP of capture" remote federal',
+    '"head of capture" remote defense',
     // Proposal writing / coordination
     '"proposal writer" remote federal',
+    '"proposal writer" remote defense',
     '"proposal coordinator" remote federal',
     '"proposal specialist" remote federal',
+    '"proposal specialist" remote defense',
     '"bid manager" remote federal',
-    // BD / Growth — senior
-    '"director of business development" remote federal',
-    '"director of business development" remote defense',
-    '"growth director" remote federal',
-    '"business development manager" remote federal',
-    '"business development manager" remote defense',
-    // Contracts — federal
-    '"contracts manager" remote federal',
-    '"senior contracts manager" remote federal',
-    '"contract specialist" remote federal',
-    '"contract specialist" remote DoD',
-    '"contracts administrator" remote federal',
-    '"contracts administrator" remote defense',
-    '"subcontracts manager" remote federal',
-    '"director of contracts" remote federal',
-    '"contracting officer" remote federal',
-    '"acquisition specialist" remote federal',
-    '"procurement specialist" remote federal',
-    // Contracts — commercial / tech
-    '"contracts manager" remote SaaS',
-    '"commercial contracts manager" remote',
-    '"contracts manager" remote cybersecurity',
-    '"senior contracts manager" remote technology',
-    // Compliance / grants / pricing
-    '"compliance manager" remote federal',
-    '"grants manager" remote federal',
-    '"grants administrator" remote federal',
-    '"pricing analyst" remote federal',
-    '"cost analyst" remote federal',
-    // Program management
-    '"federal program manager" remote',
-    '"senior program manager" remote federal',
-    '"program manager" remote DoD',
-    '"director of program management" remote federal',
-    // VP / executive level
-    '"VP of business development" remote federal',
-    '"VP of business development" remote defense',
-    '"VP of capture" remote federal',
-    '"VP of proposals" remote federal',
-    '"vice president business development" remote federal',
-    '"chief growth officer" remote federal',
-    '"head of business development" remote federal',
-    '"head of capture" remote defense',
-    '"SVP business development" remote federal',
-    // Procurement Engineering — senior levels
-    '"senior procurement engineer" remote',
-    '"senior procurement engineer" defense',
-    '"senior procurement engineer" federal',
-    '"senior procurement engineer" aerospace',
-    '"lead procurement engineer" remote',
-    '"principal procurement engineer" remote',
-    '"procurement engineer" remote federal',
-    '"procurement engineer" remote defense',
-    '"director of procurement" remote federal',
-    '"director of procurement" remote defense',
-    '"procurement manager" remote federal',
-    '"senior procurement manager" remote defense',
-    '"supply chain manager" remote federal',
-    // Fractional / contract / interim roles
-    '"fractional" "business development" federal defense',
-    '"fractional" "capture manager" remote',
-    '"fractional" "proposal manager" remote',
-    '"fractional" "COO" OR "chief operating officer" remote',
-    '"fractional" "BD director" remote federal',
-    '"fractional" "program manager" remote federal',
+    '"bid manager" remote defense',
+    '"proposal analyst" remote federal',
+    '"proposal development manager" remote federal',
+    '"proposal operations manager" remote federal',
+    // Contract / fractional proposal and capture
     '"contract" "proposal manager" remote federal',
     '"contract" "capture manager" remote federal',
-    '"interim" "business development director" remote federal',
+    '"fractional" "capture manager" remote',
+    '"fractional" "proposal manager" remote',
     '"interim" "proposal manager" remote federal',
-    '"interim" "program manager" remote federal',
-    '"contract" "BD manager" remote defense',
     '"1099" "proposal manager" remote federal',
     '"independent contractor" "capture manager" remote',
-    '"senior supply chain manager" remote defense',
-    // Grants / Federal Awards — niche, low competition
-    '"federal awards administrator" remote',
-    '"grants compliance officer" remote federal',
-    '"subrecipient monitoring specialist" remote',
-    '"2 CFR Part 200" compliance remote',
-    '"CDBG program administrator" remote',
-    '"community development finance" manager remote',
-    '"federal programs director" remote nonprofit',
-    '"grants management specialist" remote federal',
-    '"federal awards manager" remote',
-    '"single audit coordinator" remote',
-    // Small Business / Teaming niche
-    '"small business liaison officer" remote',
-    '"SBLO" remote federal',
-    '"teaming agreement manager" remote federal',
-    '"subcontracts administrator" remote federal',
-    '"small business program manager" remote federal',
-    // GWAC / IDIQ task order management
-    '"GWAC task order manager" remote',
-    '"IDIQ task order manager" remote',
-    '"contract closeout specialist" remote federal',
-    '"task order manager" remote federal defense',
-    '"ordering officer" remote federal',
-    // Nonprofit / university federal programs
-    '"federal programs director" remote',
-    '"federal programs manager" remote nonprofit',
-    '"HUD program administrator" remote',
-    '"CDBG program manager" remote',
-    '"HOME program manager" remote',
-    '"community development program manager" remote',
-    '"housing development finance manager" remote',
-    '"federal grants manager" remote nonprofit',
-    '"federal awards manager" remote university',
-    '"community development manager" remote federal',
-    '"housing program manager" remote HUD',
-    '"director of federal programs" remote nonprofit',
-    '"LIHTC program manager" remote',
-    '"CDFI program manager" remote',
-    // Training and Technical Assistance
-    '"technical assistance specialist" remote federal',
-    '"training specialist" remote federal',
-    '"capacity building manager" remote',
-    '"program training manager" remote federal',
-    '"technical assistance manager" remote HUD',
-    '"training and technical assistance" manager remote',
-    '"TA specialist" remote federal housing',
-    '"compliance training manager" remote federal',
-    '"federal training specialist" remote',
   ],
   datacenter: [],
-  quickhire: [
-    // Nonprofit executive / program leadership
-    '"executive director" remote nonprofit',
-    '"director of programs" remote nonprofit',
-    '"director of programs" nonprofit community services',
-    '"community services director" remote',
-    '"community services manager" remote',
-    '"director of community programs" remote',
-    '"program director" remote nonprofit federal',
-    // Crisis / youth / social services leadership
-    '"crisis services director" remote',
-    '"crisis program manager" remote',
-    '"youth services director" remote',
-    '"youth program director" remote nonprofit',
-    '"director of youth services" remote',
-    '"director of social services" remote nonprofit',
-    '"social services manager" remote nonprofit',
-    // Housing / community development nonprofit
-    '"housing program director" remote nonprofit',
-    '"director of housing" remote nonprofit',
-    '"community development director" remote nonprofit',
-    '"affordable housing manager" remote',
-    '"housing navigator" remote',
-    // Operations and admin leadership at nonprofits
-    '"director of operations" remote nonprofit',
-    '"chief operating officer" remote nonprofit small',
-    '"VP of programs" remote nonprofit',
-  ],
-  compliance: [
-    // FedRAMP program management
-    '"FedRAMP" "program manager" remote',
-    '"FedRAMP" "principal program manager" remote',
-    '"FedRAMP" "program manager" SaaS remote',
-    '"FedRAMP authorization" "program manager" remote',
-    '"FedRAMP" "compliance manager" remote',
-    // CMMC
-    '"CMMC" "compliance manager" remote',
-    '"CMMC" "program manager" remote',
-    '"CMMC" "compliance advisor" remote',
-    // GRC / public sector
-    '"GRC" "public sector" remote',
-    '"GRC manager" federal remote',
-    '"governance risk compliance" federal remote',
-    '"director of GRC" remote federal',
-    '"principal GRC" remote',
-    // Public sector compliance program management
-    '"public sector compliance" "program manager" remote',
-    '"federal compliance" "program manager" remote',
-    '"principal program manager" "public sector" compliance remote',
-    '"senior program manager" FedRAMP remote',
-    '"compliance program manager" federal SaaS remote',
-    // NIST / FISMA / DoD
-    '"NIST 800-171" compliance manager remote',
-    '"NIST 800-53" program manager remote',
-    '"FISMA" compliance manager remote',
-    '"DoD compliance" program manager remote',
-    '"IL5" compliance manager remote',
-    // Security compliance
-    '"security compliance" "program manager" SaaS remote',
-    '"senior compliance manager" federal SaaS remote',
-    '"compliance director" federal SaaS remote',
-    '"director of compliance" public sector remote',
-    // Zero trust / SLED
-    '"SLED compliance" program manager remote',
-    '"state local education" compliance manager remote',
-    '"zero trust" compliance program manager remote',
-    // ATO / Authorization niche
-    '"authority to operate" program manager remote',
-    '"ATO program manager" remote federal',
-    '"ATO" "program manager" SaaS remote',
-    '"authorization to operate" manager remote',
-    // Supply chain / SCRM
-    '"supply chain risk management" analyst remote federal',
-    '"SCRM analyst" remote federal',
-    '"supply chain risk" compliance manager remote',
-    // CMMC Practitioner
-    '"CMMC registered practitioner" remote',
-    '"CMMC RP" remote',
-    '"CMMC third party assessor" remote',
-    '"cybersecurity maturity model" compliance remote',
-    // FedRAMP Package Owner
-    '"FedRAMP package owner" remote',
-    '"FedRAMP reviewer" remote',
-    '"cloud security" compliance manager remote federal',
-  ],
+  quickhire: [],
+  compliance: [],
   temp: [
-    'proposal manager contract',
+    'proposal manager contract remote',
     'proposal coordinator contract remote',
-    'business development coordinator contract remote',
-    'program manager contract remote',
-    'operations coordinator contract remote',
-    'project manager contract remote',
-    'contracts manager temp remote',
     'proposal writer contract remote',
-    'capture manager contract federal',
-    'grants manager contract remote',
-    'federal awards administrator contract',
-    'compliance manager contract remote federal',
-    'customer success manager contract remote',
-    'technical account manager contract remote',
+    'capture manager contract remote federal',
+    'proposal specialist contract remote',
+    'bid manager contract remote',
   ],
 }
 
@@ -617,7 +371,7 @@ async function serperSearch(query: string): Promise<SearchResult[]> {
     const res = await fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: query, num: 10 }),
+      body: JSON.stringify({ q: query, num: 10, tbs: 'qdr:w' }),
     })
     if (!res.ok) {
       console.error(`Serper error: ${res.status} — falling back to Brave Search`)
@@ -691,50 +445,48 @@ async function indeedRssSearch(query: string): Promise<SearchResult[]> {
 // Score a job using keyword matching — no API calls, no credit usage.
 // Base score starts at 65 because results come from targeted site: queries
 // that already filtered by relevance through Serper/Google — not random listings.
-function scoreJob(title: string, _company: string, description: string, category: Category): { score: number; notes: string } {
+function scoreJob(title: string, _company: string, description: string, _category: Category): { score: number; notes: string } {
   const text = (title + ' ' + description).toLowerCase()
   const titleLower = title.toLowerCase()
-  let score = 65  // Base: already passed targeted site: query filter
   const matched: string[] = []
 
-  if (category === 'govcon' || category === 'compliance') {
-    // Strong title matches — core roles
-    const coreRoles = ['proposal manager', 'capture manager', 'proposal director', 'director of proposals',
-      'director of capture', 'proposal writer', 'bid manager', 'proposal coordinator', 'proposal specialist',
-      'contracts manager', 'contract specialist', 'contracts administrator', 'subcontracts manager',
-      'director of contracts', 'senior contracts manager', 'procurement manager', 'procurement engineer',
-      'business development manager', 'director of business development', 'growth director',
-      'program manager', 'federal program manager', 'senior program manager',
-      'compliance manager', 'grants manager', 'pricing analyst', 'fedramp', 'cmmc', 'grc']
-    for (const role of coreRoles) {
-      if (text.includes(role)) { score += 15; matched.push(role); break }
-    }
-    // Senior/director level bonus
-    if (/senior|director|vp |vice president|head of|chief|principal|lead /.test(text)) { score += 8; matched.push('senior level') }
-    // Federal/defense domain bonus
-    if (/federal|dod|defense|government contract|military|civilian agency|public sector/.test(text)) { score += 8; matched.push('federal') }
-    // Remote confirmation bonus
-    if (/remote|work from home/.test(text)) { score += 5; matched.push('remote') }
-    // Exact skill matches
-    // "capture" only counts in federal context — prevent matching document capture / OCR software roles
-    if (/shipley|idiq|gwac|ota|far|dfars|sam\.gov/.test(text)) { score += 5; matched.push('govcon skills') }
-    if (/proposal/.test(text)) { score += 5; matched.push('govcon skills') }
-    if (/\bcapture\b/.test(text) && /federal|dod|defense|government contract|military|civilian agency|govcon/.test(text)) { score += 5; matched.push('capture federal') }
-    // Negative signals — only hard disqualifiers
-    if (/engineer|software developer|devops|data scientist|machine learning|ml engineer|applied ai|artificial intelligence engineer/.test(titleLower) &&
-        !/procurement engineer|systems engineer|proposal engineer/.test(titleLower)) { score -= 40 }
-  } else if (category === 'temp') {
-    // Temp jobs — anything from a staffing agency site is likely relevant
-    if (/proposal|business development|program manager|contracts|coordinator|operations/.test(text)) { score += 10; matched.push('temp role match') }
-    if (/\bcapture\b/.test(text) && /federal|dod|defense|government contract|military|govcon/.test(text)) { score += 10; matched.push('capture federal') }
-  } else if (category === 'sales') {
-    if (/sales|account executive|business development|revenue|quota/.test(text)) { score += 20; matched.push('sales role') }
-    if (/saas|software|technology|cloud/.test(text)) { score += 10; matched.push('tech sales') }
-    if (/remote/.test(text)) { score += 5 }
+  // HARD FILTER 1: Must be remote
+  if (!/remote|work from home/.test(text)) return { score: 0, notes: 'not remote' }
+
+  // HARD FILTER 2: Title must contain a proposal or capture keyword
+  const proposalCaptureTitles = [
+    'proposal manager', 'proposal director', 'proposal writer', 'proposal coordinator',
+    'proposal specialist', 'proposal analyst', 'proposal development', 'proposal operations',
+    'capture manager', 'capture director', 'capture specialist', 'director of capture',
+    'director of proposals', 'vp of proposals', 'vp of capture', 'head of capture',
+    'bid manager', 'bid coordinator', 'bid writer', 'bid specialist',
+  ]
+  const titleMatches = proposalCaptureTitles.some(role => titleLower.includes(role))
+  if (!titleMatches) return { score: 0, notes: 'not a proposal or capture role' }
+
+  // Passed hard filters — score from 70
+  let score = 70
+  matched.push('proposal/capture title')
+
+  // Federal/defense domain bonus
+  if (/federal|dod|defense|government contract|military|civilian agency|public sector|intelligence/.test(text)) {
+    score += 10; matched.push('federal')
+  }
+  // Senior/director level bonus
+  if (/senior|director|vp |vice president|head of|chief|principal|lead /.test(titleLower)) {
+    score += 8; matched.push('senior level')
+  }
+  // Govcon skills bonus
+  if (/shipley|idiq|gwac|ota|far|dfars|sam\.gov|proposal|capture/.test(text)) {
+    score += 5; matched.push('govcon skills')
+  }
+  // Hard disqualifiers — tech roles that happen to say "proposal"
+  if (/software engineer|software developer|devops|data scientist|machine learning|ml engineer/.test(titleLower)) {
+    return { score: 0, notes: 'tech role disqualified' }
   }
 
-  score = Math.min(99, Math.max(0, score))
-  return { score, notes: matched.length ? matched.join(', ') : 'keyword match' }
+  score = Math.min(95, score)
+  return { score, notes: matched.join(', ') }
 }
 
 async function processQuery(
