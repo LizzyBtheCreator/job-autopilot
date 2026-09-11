@@ -525,10 +525,7 @@ async function processQuery(
       const titleClean = result.title.replace(/\s*[\|–—]\s*.*/g, '').trim() || result.title
       const info = { isJob: true, title: titleClean, company: 'See listing', isRemote: remoteHint ?? true, isCommissionOnly: false, salaryRaw: '' }
 
-      // Skip if same title + company already in db (any non-rejected status)
-      const { data: existingJob } = await db.from('discovered_jobs').select('id, status')
-        .ilike('title', info.title).ilike('company', info.company).maybeSingle()
-      if (existingJob && existingJob.status !== 'rejected') { skipped++; continue }
+      // URL-only duplicate check — title matching was blocking too many valid new jobs
 
       const { score, notes } = scoreJob(info.title, info.company, result.description, category)
       // Results came from targeted site: queries so the bar is lower —
