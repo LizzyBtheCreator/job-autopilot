@@ -445,13 +445,13 @@ async function indeedRssSearch(query: string): Promise<SearchResult[]> {
 // Score a job using keyword matching — no API calls, no credit usage.
 // Base score starts at 65 because results come from targeted site: queries
 // that already filtered by relevance through Serper/Google — not random listings.
-function scoreJob(title: string, _company: string, description: string, _category: Category): { score: number; notes: string } {
+function scoreJob(title: string, _company: string, description: string, _category: Category, isRemote?: boolean | null): { score: number; notes: string } {
   const text = (title + ' ' + description).toLowerCase()
   const titleLower = title.toLowerCase()
   const matched: string[] = []
 
-  // HARD FILTER 1: Must be remote
-  if (!/remote|work from home/.test(text)) return { score: 0, notes: 'not remote' }
+  // HARD FILTER 1: Only reject if explicitly confirmed NOT remote
+  if (isRemote === false) return { score: 0, notes: 'confirmed not remote' }
 
   // HARD FILTER 2: Title must contain a proposal or capture keyword
   const proposalCaptureTitles = [
@@ -464,10 +464,17 @@ function scoreJob(title: string, _company: string, description: string, _categor
   const titleMatches = proposalCaptureTitles.some(role => titleLower.includes(role))
   if (!titleMatches) return { score: 0, notes: 'not a proposal or capture role' }
 
+  // Hard disqualifiers — tech roles that happen to say "proposal"
+  if (/software engineer|software developer|devops|data scientist|machine learning|ml engineer/.test(titleLower)) {
+    return { score: 0, notes: 'tech role disqualified' }
+  }
+
   // Passed hard filters — score from 70
   let score = 70
   matched.push('proposal/capture title')
 
+  // Remote confirmed bonus
+  if (isRemote === true || /remote|work from home/.test(text)) { score += 5; matched.push('remote') }
   // Federal/defense domain bonus
   if (/federal|dod|defense|government contract|military|civilian agency|public sector|intelligence/.test(text)) {
     score += 10; matched.push('federal')
@@ -477,12 +484,8 @@ function scoreJob(title: string, _company: string, description: string, _categor
     score += 8; matched.push('senior level')
   }
   // Govcon skills bonus
-  if (/shipley|idiq|gwac|ota|far|dfars|sam\.gov|proposal|capture/.test(text)) {
+  if (/shipley|idiq|gwac|ota|far|dfars|sam\.gov/.test(text)) {
     score += 5; matched.push('govcon skills')
-  }
-  // Hard disqualifiers — tech roles that happen to say "proposal"
-  if (/software engineer|software developer|devops|data scientist|machine learning|ml engineer/.test(titleLower)) {
-    return { score: 0, notes: 'tech role disqualified' }
   }
 
   score = Math.min(95, score)
@@ -527,7 +530,7 @@ async function processQuery(
 
       // URL-only duplicate check — title matching was blocking too many valid new jobs
 
-      const { score, notes } = scoreJob(info.title, info.company, result.description, category)
+      const { score, notes } = scoreJob(info.title, info.company, result.description, category, remoteHint)
       // Results came from targeted site: queries so the bar is lower —
       // the query itself already filtered for relevance. Negative signals
       // (wrong role type) still drop the score below threshold.
