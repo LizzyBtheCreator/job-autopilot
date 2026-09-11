@@ -371,7 +371,7 @@ async function serperSearch(query: string): Promise<SearchResult[]> {
     const res = await fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: query, num: 10, tbs: 'qdr:w' }),
+      body: JSON.stringify({ q: query, num: 10 }),
     })
     if (!res.ok) {
       console.error(`Serper error: ${res.status} — falling back to Brave Search`)
