@@ -282,10 +282,12 @@ export default function ApplicationsPage() {
   }
 
   async function downloadPdf(content: string, type: 'resume' | 'cover') {
-    const company = selected?.job?.company ?? 'Application'
+    const company = selected?.job?.company
+    const title = selected?.job?.title ?? 'Application'
+    const label = (!company || company === 'See listing') ? title.slice(0, 50) : company
     const filename = type === 'resume'
-      ? `Resume - ${company}.pdf`
-      : `Cover Letter - ${company}.pdf`
+      ? `Resume - ${label}.pdf`
+      : `Cover Letter - ${label}.pdf`
     try {
       const res = await fetch('/api/applications/pdf', {
         method: 'POST',
