@@ -286,7 +286,7 @@ export default function ApplicationsPage() {
     const title = selected?.job?.title ?? 'Application'
     const label = (!company || company === 'See listing') ? title.slice(0, 50) : company
     const filename = type === 'resume'
-      ? `Resume - ${label}.pdf`
+      ? `E. McMillan - ${label}.pdf`
       : `Cover Letter - ${label}.pdf`
     try {
       const res = await fetch('/api/applications/pdf', {
