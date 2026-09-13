@@ -281,32 +281,98 @@ export default function ApplicationsPage() {
     }
   }
 
-  async function downloadPdf(content: string, type: 'resume' | 'cover') {
+  function downloadPdf(content: string, type: 'resume' | 'cover') {
     const company = selected?.job?.company
     const title = selected?.job?.title ?? 'Application'
     const label = (!company || company === 'See listing') ? title.slice(0, 50) : company
     const filename = type === 'resume'
-      ? `E. McMillan - ${label}.pdf`
-      : `Cover Letter - ${label}.pdf`
-    try {
-      const res = await fetch('/api/applications/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, filename }),
-      })
-      if (!res.ok) throw new Error('PDF generation failed')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 5000)
-    } catch {
-      showMsg('PDF download failed. Try again.', 'error')
+      ? `E. McMillan - ${label}`
+      : `Cover Letter - ${label}`
+
+    // Convert structured text markers to clean HTML, then open in a print window
+    function toHtml(text: string): string {
+      if (!text.includes('[HEADER]')) {
+        // plain text fallback
+        return text.split('\n').map(line => {
+          const t = line.trim()
+          if (!t) return '<br>'
+          if (t.startsWith('- ') || t.startsWith('• ')) return `<li>${t.slice(2)}</li>`
+          if (t.match(/^[A-Z][A-Z\s&|\/\-]{4,}$/) && t.length < 60) return `<h2>${t}</h2>`
+          return `<p>${t}</p>`
+        }).join('\n')
+      }
+      const lines = text.split('\n')
+      const html: string[] = []
+      let i = 0
+      let inList = false
+      const closeList = () => { if (inList) { html.push('</ul>'); inList = false } }
+      while (i < lines.length) {
+        const line = lines[i].trim()
+        if (line === '[HEADER]') {
+          i++
+          const name = lines[i]?.trim() ?? ''; i++
+          const contact = lines[i]?.trim() ?? ''; i++ // [/HEADER]
+          i++
+          closeList()
+          html.push(`<div class="header"><div class="name">${name}</div><div class="contact">${contact}</div><hr></div>`)
+        } else if (line.startsWith('[SECTION]')) {
+          closeList()
+          const sec = line.replace('[SECTION]', '').replace('[/SECTION]', '')
+          html.push(`<h2>${sec}</h2>`)
+          i++
+        } else if (line.startsWith('[JOB]')) {
+          closeList()
+          const job = line.replace('[JOB]', '').replace('[/JOB]', '')
+          const parts = job.split('|')
+          const left = parts[0]?.trim() ?? job
+          const right = parts[1]?.trim() ?? ''
+          html.push(`<div class="job-header"><span class="job-title">${left}</span>${right ? `<span class="job-dates">${right}</span>` : ''}</div>`)
+          i++
+        } else if (line.startsWith('- ') || line.startsWith('• ')) {
+          if (!inList) { html.push('<ul>'); inList = true }
+          html.push(`<li>${line.slice(2)}</li>`)
+          i++
+        } else if (line === '' || line === '[/HEADER]') {
+          closeList()
+          i++
+        } else {
+          closeList()
+          html.push(`<p>${line}</p>`)
+          i++
+        }
+      }
+      closeList()
+      return html.join('\n')
     }
+
+    const body = toHtml(content)
+    const win = window.open('', '_blank')
+    if (!win) { showMsg('Allow popups to download PDF', 'error'); return }
+    win.document.write(`<!DOCTYPE html><html><head>
+<title>${filename}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #111; padding: 0.75in; max-width: 8.5in; margin: 0 auto; }
+  .header { text-align: center; margin-bottom: 14px; }
+  .name { font-size: 17pt; font-weight: bold; margin-bottom: 4px; }
+  .contact { font-size: 10pt; color: #444; margin-bottom: 10px; }
+  hr { border: none; border-top: 1px solid #999; margin: 0; }
+  h2 { font-size: 11pt; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #bbb; margin: 14px 0 4px; padding-bottom: 2px; }
+  .job-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 10.5pt; margin: 8px 0 3px; }
+  .job-dates { font-weight: normal; color: #444; font-size: 10pt; }
+  ul { padding-left: 20px; margin: 3px 0 6px; }
+  li { margin-bottom: 3px; line-height: 1.5; font-size: 10pt; }
+  p { margin: 4px 0; line-height: 1.6; }
+  @media print {
+    body { padding: 0.5in; }
+    @page { margin: 0.5in; size: letter; }
+  }
+</style>
+</head><body>
+${body}
+<script>window.onload = function(){ document.title = ${JSON.stringify(filename)}; window.print(); }<\/script>
+</body></html>`)
+    win.document.close()
   }
 
   async function saveFollowUp() {
