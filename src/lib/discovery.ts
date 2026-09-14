@@ -497,6 +497,7 @@ async function processQuery(
   db: ReturnType<typeof supabaseAdmin>
 ): Promise<{ found: number; saved: number; skipped: number }> {
   let found = 0, saved = 0, skipped = 0
+  const skipReasons: Record<string, number> = { noUrl: 0, boardIndex: 0, urlDupe: 0, badTitle: 0, lowScore: 0 }
   try {
     // query already contains the site: operator from runDiscovery()
     // Use Serper for all categories — it respects site: operators correctly
@@ -504,7 +505,7 @@ async function processQuery(
     found = results.length
 
     for (const result of results) {
-      if (!result.url || !result.title) { skipped++; continue }
+      if (!result.url || !result.title) { skipped++; skipReasons.noUrl++; continue }
 
       // Skip job board index/search pages — only individual job postings
       if (
@@ -515,11 +516,11 @@ async function processQuery(
         (result.url.includes('myworkdayjobs.com') && result.url.includes('/jobs?')) ||
         // Dice listing pages (individual jobs use /job-detail/UUID)
         (result.url.includes('dice.com') && !result.url.includes('/job-detail/'))
-      ) { skipped++; continue }
+      ) { skipped++; skipReasons.boardIndex++; continue }
 
       // Skip if URL already seen (any status except rejected)
       const { data: existingUrl } = await db.from('discovered_jobs').select('id, status').eq('url', result.url).maybeSingle()
-      if (existingUrl && existingUrl.status !== 'rejected') { skipped++; continue }
+      if (existingUrl && existingUrl.status !== 'rejected') { skipped++; skipReasons.urlDupe++; continue }
 
       // Parse title and company directly from the Serper result — no AI calls.
       // We trust Serper results because they came from targeted site: queries.
@@ -534,7 +535,12 @@ async function processQuery(
       // the query itself already filtered for relevance. Negative signals
       // (wrong role type) still drop the score below threshold.
       const minScore = category === 'temp' ? 55 : 60
-      if (score < minScore) { skipped++; continue }
+      if (score < minScore) {
+        skipped++
+        if (score === 0) skipReasons.badTitle++; else skipReasons.lowScore++
+        console.log(`SKIP score=${score} title="${info.title}" notes="${notes}"`)
+        continue
+      }
 
       await db.from('discovered_jobs').insert({
         title: info.title || result.title,
@@ -553,6 +559,9 @@ async function processQuery(
     }
   } catch (err) {
     console.error(`Discovery error for query "${query}":`, err)
+  }
+  if (found > 0) {
+    console.log(`QUERY "${query.slice(0, 60)}" → found=${found} saved=${saved} skipped=${skipped}`, skipReasons)
   }
   return { found, saved, skipped }
 }
