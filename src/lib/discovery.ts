@@ -542,7 +542,7 @@ async function processQuery(
         continue
       }
 
-      await db.from('discovered_jobs').insert({
+      const { error: insertErr } = await db.from('discovered_jobs').insert({
         title: info.title || result.title,
         company: info.company || 'Unknown',
         url: result.url,
@@ -555,7 +555,12 @@ async function processQuery(
         fit_notes: notes,
         status: 'pending_review',
       })
-      saved++
+      if (insertErr) {
+        console.error(`INSERT FAILED: ${insertErr.message} | title="${info.title}" url="${result.url}"`)
+        skipped++
+      } else {
+        saved++
+      }
     }
   } catch (err) {
     console.error(`Discovery error for query "${query}":`, err)
@@ -667,7 +672,7 @@ async function processTempResults(
     const { data: existingJob } = await db.from('discovered_jobs').select('id, status')
       .ilike('title', title).maybeSingle()
     if (existingJob && existingJob.status !== 'rejected') { skipped++; continue }
-    await db.from('discovered_jobs').insert({
+    const { error: insertErr } = await db.from('discovered_jobs').insert({
       title,
       company: 'See listing',
       url: result.url,
@@ -680,7 +685,12 @@ async function processTempResults(
       fit_notes: notes || 'temp agency scrape',
       status: 'pending_review',
     })
-    saved++
+    if (insertErr) {
+      console.error(`TEMP INSERT FAILED: ${insertErr.message} | title="${title}"`)
+      skipped++
+    } else {
+      saved++
+    }
   }
   return { found, saved, skipped }
 }
