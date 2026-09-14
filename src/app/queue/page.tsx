@@ -42,6 +42,7 @@ export default function QueuePage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [addStatus, setAddStatus] = useState('')
   const [addLoading, setAddLoading] = useState(false)
+  const [totalPending, setTotalPending] = useState<number | null>(null)
 
   async function addJob() {
     if (!form.title || !form.company) return
@@ -94,6 +95,7 @@ export default function QueuePage() {
     const res = await fetch(`/api/jobs/queue?${params}`)
     const data = await res.json()
     setJobs(data.jobs ?? [])
+    setTotalPending(data.totalPending ?? null)
     setLoading(false)
   }
 
@@ -167,7 +169,7 @@ export default function QueuePage() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Review Queue</h1>
-          <p className="text-gray-400 text-sm mt-1">{visibleJobs.length} jobs shown</p>
+          <p className="text-gray-400 text-sm mt-1">{visibleJobs.length} jobs shown{totalPending !== null ? ` (${totalPending} total in database)` : ''}</p>
         </div>
         {autoFillCount > 0 && (
           <button

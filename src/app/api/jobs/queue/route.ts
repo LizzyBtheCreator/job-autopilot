@@ -22,5 +22,13 @@ export async function GET(req: NextRequest) {
     console.error('Queue fetch error:', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
-  return NextResponse.json({ success: true, jobs: data ?? [] })
+
+  // Also get total count of all pending_review jobs regardless of filters
+  const { count } = await db
+    .from('discovered_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending_review')
+
+  console.log(`Queue: returning ${data?.length ?? 0} jobs (total pending_review in DB: ${count})`)
+  return NextResponse.json({ success: true, jobs: data ?? [], totalPending: count })
 }
