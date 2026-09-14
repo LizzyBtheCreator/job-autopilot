@@ -89,14 +89,16 @@ export default function QueuePage() {
 
   async function load() {
     setLoading(true)
-    const q = supabase
+    let q = supabase
       .from('discovered_jobs')
       .select('*')
       .eq('status', 'pending_review')
       .order('fit_score', { ascending: false })
-    if (filter !== 'all') q.eq('category', filter)
-    if (remoteOnly) q.eq('is_remote', true)
-    const { data } = await q
+      .limit(500)
+    if (filter !== 'all') q = q.eq('category', filter)
+    if (remoteOnly) q = q.eq('is_remote', true)
+    const { data, error } = await q
+    if (error) console.error('Queue load error:', error)
     setJobs(data ?? [])
     setLoading(false)
   }
