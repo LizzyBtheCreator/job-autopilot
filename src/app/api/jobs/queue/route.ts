@@ -5,18 +5,18 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const category = searchParams.get('category')
+  const roleCategory = searchParams.get('roleCategory')
   const remoteOnly = searchParams.get('remoteOnly') === 'true'
 
   const db = supabaseAdmin()
   let q = db
     .from('discovered_jobs')
     .select('*')
-    .eq('status', 'pending_review')
+    .eq('status', 'new')
     .order('fit_score', { ascending: false })
     .limit(500)
 
-  if (category && category !== 'all') q = q.eq('category', category)
+  if (roleCategory && roleCategory !== 'all') q = q.eq('role_category', roleCategory)
   if (remoteOnly) q = q.eq('is_remote', true)
 
   const { data, error } = await q
@@ -25,12 +25,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 
-  // Also get total count of all pending_review jobs regardless of filters
   const { count } = await db
     .from('discovered_jobs')
     .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending_review')
+    .eq('status', 'new')
 
-  console.log(`Queue: returning ${data?.length ?? 0} jobs (total pending_review in DB: ${count})`)
   return NextResponse.json({ success: true, jobs: data ?? [], totalPending: count })
 }

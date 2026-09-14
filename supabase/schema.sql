@@ -1,135 +1,79 @@
 -- ============================================================
--- JOB AUTOPILOT — DATABASE SCHEMA
+-- JOB AUTOPILOT — DATABASE SCHEMA (clean rebuild)
 -- ============================================================
+-- This file is idempotent-ish (uses IF NOT EXISTS / DO NOTHING) but the
+-- rename-old-tables step only makes sense to run ONCE, on the live DB that
+-- still has the pre-rebuild `discovered_jobs` / `applications` tables.
+--
+-- HOW TO RUN THIS:
+-- Paste this whole file into the Supabase SQL Editor (project uwcaidmvlllruooidzsb)
+-- and run it once. It preserves every live (non-rejected) job and every
+-- application row by renaming the old tables to *_legacy instead of dropping
+-- them — nothing is deleted. You can drop the *_legacy tables yourself later
+-- once you've confirmed the new Queue/Applications pages look right.
 
--- Master profile (one row = Elizabeth)
-create table if not exists master_profile (
-  id uuid primary key default gen_random_uuid(),
-  full_name text not null default 'Elizabeth H. McMillan',
-  email text not null default 'elimcmillan@myyahoo.com',
-  phone text not null default '(910) 479-4839',
-  location text not null default 'Fayetteville, NC',
-  cover_letter_tone text not null default 'conversational-direct',
-  salary_min integer not null default 60000,
-  remote_only boolean not null default true,
-  no_commission_only boolean not null default true,
-  daily_target integer not null default 50,
-  daily_target_production integer not null default 100,
-  is_testing_phase boolean not null default true,
-  category_floor integer not null default 5,
-  category_cap_pct integer not null default 60,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
+-- ── STEP 1: Archive the old tables (skip if they don't exist) ──────────────
+do $$
+begin
+  if exists (select from information_schema.tables where table_name = 'discovered_jobs') then
+    alter table discovered_jobs rename to discovered_jobs_legacy;
+  end if;
+  if exists (select from information_schema.tables where table_name = 'applications') then
+    alter table applications rename to applications_legacy;
+  end if;
+end $$;
 
--- Profile sections (one row per job category)
-create table if not exists profile_sections (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid references master_profile(id) on delete cascade,
-  category text not null check (category in ('sales', 'govcon', 'datacenter')),
-  summary text,
-  skills text[] default '{}',
-  keywords text[] default '{}',
-  target_roles text[] default '{}',
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique(profile_id, category)
-);
+-- Old tables we no longer use — profile content now lives in code
+-- (src/lib/resume-profile.ts) since it changes rarely and doesn't need a
+-- CRUD UI. Not dropped, just no longer referenced by the app.
+-- (master_profile, profile_sections, work_history, certifications,
+--  education, daily_stats are left alone if they exist — harmless to keep.)
 
--- Work history entries
-create table if not exists work_history (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid references master_profile(id) on delete cascade,
-  company text not null,
-  title text not null,
-  start_date text,
-  end_date text,
-  is_current boolean default false,
-  is_remote boolean default false,
-  location text,
-  bullets text[] default '{}',
-  categories text[] default '{}',
-  sort_order integer default 0,
-  created_at timestamptz default now()
-);
-
--- Certifications
-create table if not exists certifications (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid references master_profile(id) on delete cascade,
-  name text not null,
-  issuer text,
-  year text,
-  in_progress boolean default false
-);
-
--- Education
-create table if not exists education (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid references master_profile(id) on delete cascade,
-  institution text not null,
-  degree text,
-  field text,
-  year text,
-  in_progress boolean default false
-);
-
--- Discovered jobs (raw from web search)
+-- ── STEP 2: New discovered_jobs ─────────────────────────────────────────────
 create table if not exists discovered_jobs (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   company text not null,
   url text not null unique,
   description text,
-  category text check (category in ('sales', 'govcon', 'datacenter')),
-  role_type text,
   is_remote boolean,
   salary_min integer,
   salary_max integer,
   salary_raw text,
-  is_commission_only boolean default false,
+  role_category text not null default 'govcon_other' check (role_category in (
+    'proposal_writer', 'capture_manager', 'compliance_manager',
+    'contracts_administrator', 'business_development', 'govcon_other', 'general_remote'
+  )),
+  is_entry_level boolean not null default false,
+  industry_tags text[] default '{}',
+  source_platform text,
   fit_score integer default 0,
   fit_notes text,
-  status text not null default 'pending_review' check (status in (
-    'pending_review', 'approved', 'rejected', 'applying', 'applied', 'archived'
-  )),
-  application_form_type text,
+  status text not null default 'new' check (status in ('new', 'reviewed', 'rejected', 'applied')),
   discovered_at timestamptz default now(),
   reviewed_at timestamptz,
   applied_at timestamptz
 );
 
--- Applications
+create index if not exists idx_jobs_status on discovered_jobs(status);
+create index if not exists idx_jobs_role_category on discovered_jobs(role_category);
+create index if not exists idx_jobs_discovered_at on discovered_jobs(discovered_at desc);
+
+-- ── STEP 3: New applications ────────────────────────────────────────────────
 create table if not exists applications (
   id uuid primary key default gen_random_uuid(),
-  job_id uuid references discovered_jobs(id) on delete cascade,
+  job_id uuid not null unique references discovered_jobs(id) on delete cascade,
   resume_text text,
-  cover_letter text,
-  status text not null default 'draft' check (status in (
-    'draft', 'ready', 'filled', 'submitted', 'rejected', 'interviewing', 'offer', 'closed', 'unavailable'
-  )),
-  form_filled_at timestamptz,
-  submitted_at timestamptz,
+  status text not null default 'New' check (status in ('New', 'Applied', 'Interview', 'Offer', 'Rejected')),
+  applied_at timestamptz,
   notes text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
--- Daily stats
-create table if not exists daily_stats (
-  id uuid primary key default gen_random_uuid(),
-  date date not null unique default current_date,
-  discovered integer default 0,
-  approved integer default 0,
-  rejected integer default 0,
-  applied integer default 0,
-  sales_applied integer default 0,
-  govcon_applied integer default 0,
-  datacenter_applied integer default 0,
-  target integer default 50
-);
+create index if not exists idx_applications_job on applications(job_id);
+create index if not exists idx_applications_status on applications(status);
 
--- Auto-update updated_at
 create or replace function update_updated_at()
 returns trigger as $$
 begin
@@ -138,16 +82,60 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger master_profile_updated_at before update on master_profile
-  for each row execute function update_updated_at();
-create trigger profile_sections_updated_at before update on profile_sections
-  for each row execute function update_updated_at();
+drop trigger if exists applications_updated_at on applications;
 create trigger applications_updated_at before update on applications
   for each row execute function update_updated_at();
 
--- Indexes
-create index if not exists idx_jobs_status on discovered_jobs(status);
-create index if not exists idx_jobs_category on discovered_jobs(category);
-create index if not exists idx_jobs_discovered_at on discovered_jobs(discovered_at desc);
-create index if not exists idx_applications_job on applications(job_id);
-create index if not exists idx_daily_stats_date on daily_stats(date desc);
+-- ── STEP 4: Migrate live rows from the legacy tables ────────────────────────
+-- Carries forward everything that wasn't already rejected. Category mapping
+-- is best-effort (the legacy app only searched proposal/capture titles under
+-- a single 'govcon' category, so everything maps to 'govcon_other' — you can
+-- manually re-tag individual jobs in the new Queue page afterward).
+do $$
+begin
+  if exists (select from information_schema.tables where table_name = 'discovered_jobs_legacy') then
+    insert into discovered_jobs (
+      id, title, company, url, description, is_remote,
+      salary_min, salary_max, salary_raw, role_category,
+      fit_score, fit_notes, status, discovered_at, reviewed_at, applied_at
+    )
+    select
+      id, title, company, url, description, is_remote,
+      salary_min, salary_max, salary_raw, 'govcon_other',
+      fit_score, fit_notes,
+      case status
+        when 'pending_review' then 'new'
+        when 'approved' then 'reviewed'
+        when 'applying' then 'reviewed'
+        when 'applied' then 'applied'
+        else 'rejected'
+      end,
+      discovered_at, reviewed_at, applied_at
+    from discovered_jobs_legacy
+    where status <> 'rejected'
+    on conflict (url) do nothing;
+  end if;
+end $$;
+
+do $$
+begin
+  if exists (select from information_schema.tables where table_name = 'applications_legacy') then
+    insert into applications (job_id, resume_text, status, applied_at, notes, created_at, updated_at)
+    select
+      a.job_id, a.resume_text,
+      case a.status
+        when 'draft' then 'New'
+        when 'ready' then 'New'
+        when 'filled' then 'New'
+        when 'submitted' then 'Applied'
+        when 'interviewing' then 'Interview'
+        when 'offer' then 'Offer'
+        else 'Rejected'
+      end,
+      a.submitted_at, a.notes, a.created_at, a.updated_at
+    from applications_legacy a
+    -- only rows whose job actually survived the migration above
+    where exists (select 1 from discovered_jobs j where j.id = a.job_id)
+    on conflict (job_id) do nothing;
+  end if;
+end $$;

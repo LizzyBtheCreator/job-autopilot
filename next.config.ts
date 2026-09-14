@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  serverExternalPackages: ['playwright', 'pdfkit'],
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
