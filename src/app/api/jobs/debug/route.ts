@@ -4,33 +4,23 @@ import { supabaseAdmin } from '@/lib/supabase'
 export async function GET() {
   const db = supabaseAdmin()
 
-  // Count by status
-  const { data: statusCounts } = await db
-    .from('discovered_jobs')
-    .select('status')
-
-  const counts: Record<string, number> = {}
-  for (const row of statusCounts ?? []) {
-    counts[row.status] = (counts[row.status] ?? 0) + 1
+  // Count each status individually
+  const statuses = ['pending_review', 'approved', 'rejected', 'applying', 'applied', 'archived']
+  const byStatus: Record<string, number> = {}
+  for (const s of statuses) {
+    const { count } = await db.from('discovered_jobs').select('*', { count: 'exact', head: true }).eq('status', s)
+    if (count) byStatus[s] = count
   }
 
-  // Count by category for pending_review
-  const { data: catCounts } = await db
-    .from('discovered_jobs')
-    .select('category')
-    .eq('status', 'pending_review')
+  // Total count
+  const { count: total } = await db.from('discovered_jobs').select('*', { count: 'exact', head: true })
 
-  const cats: Record<string, number> = {}
-  for (const row of catCounts ?? []) {
-    cats[row.category ?? 'null'] = (cats[row.category ?? 'null'] ?? 0) + 1
-  }
-
-  // Sample 5 most recent rows
-  const { data: recent } = await db
+  // 5 most recent
+  const { data: recent, error: recentErr } = await db
     .from('discovered_jobs')
-    .select('title, category, status, discovered_at, url')
+    .select('title, category, status, discovered_at')
     .order('discovered_at', { ascending: false })
     .limit(5)
 
-  return NextResponse.json({ byStatus: counts, pendingByCategory: cats, recentRows: recent })
+  return NextResponse.json({ total, byStatus, recentRows: recent, recentErr: recentErr?.message ?? null })
 }
