@@ -89,17 +89,11 @@ export default function QueuePage() {
 
   async function load() {
     setLoading(true)
-    let q = supabase
-      .from('discovered_jobs')
-      .select('*')
-      .eq('status', 'pending_review')
-      .order('fit_score', { ascending: false })
-      .limit(500)
-    if (filter !== 'all') q = q.eq('category', filter)
-    if (remoteOnly) q = q.eq('is_remote', true)
-    const { data, error } = await q
-    if (error) console.error('Queue load error:', error)
-    setJobs(data ?? [])
+    const params = new URLSearchParams({ remoteOnly: String(remoteOnly) })
+    if (filter !== 'all') params.set('category', filter)
+    const res = await fetch(`/api/jobs/queue?${params}`)
+    const data = await res.json()
+    setJobs(data.jobs ?? [])
     setLoading(false)
   }
 
