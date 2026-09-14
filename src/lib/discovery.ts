@@ -518,21 +518,30 @@ async function processQuery(
         (result.url.includes('dice.com') && !result.url.includes('/job-detail/'))
       ) { skipped++; skipReasons.boardIndex++; continue }
 
-      // Skip if URL already pending_review or applying — don't duplicate active jobs
+      // Skip if URL already seen (any status except rejected)
       const { data: existingUrl } = await db.from('discovered_jobs').select('id, status').eq('url', result.url).maybeSingle()
-      if (existingUrl && (existingUrl.status === 'pending_review' || existingUrl.status === 'applying')) {
-        skipped++; skipReasons.urlDupe++; continue
-      }
+      if (existingUrl && existingUrl.status !== 'rejected') { skipped++; skipReasons.urlDupe++; continue }
 
       // Parse title and company directly from the Serper result — no AI calls.
       // We trust Serper results because they came from targeted site: queries.
       const remoteHint = looksRemote(result.title, result.description, result.url)
-      const titleClean = result.title.replace(/\s*[\|–—]\s*.*/g, '').trim() || result.title
+      // Pick the segment of the title that contains the actual job title.
+      // Serper often returns "Company | Job Title" or "Job Title | Company".
+      // Splitting on | and taking the segment with a job keyword avoids stripping the title.
+      const proposalKeywords = ['proposal', 'capture', 'bid manager', 'bid coordinator', 'bid writer']
+      const segments = result.title.split(/\s*[\|–—]\s*/)
+      const titleClean = segments.find(s => proposalKeywords.some(k => s.toLowerCase().includes(k)))?.trim()
+        ?? segments[0].trim()
       const info = { isJob: true, title: titleClean, company: 'See listing', isRemote: remoteHint ?? true, isCommissionOnly: false, salaryRaw: '' }
 
       // URL-only duplicate check — title matching was blocking too many valid new jobs
 
-      const { score, notes } = scoreJob(info.title, info.company, result.description, category, remoteHint)
+      // Score against cleaned title; if that fails try the full raw title (catches edge cases)
+      let { score, notes } = scoreJob(info.title, info.company, result.description, category, remoteHint)
+      if (score === 0) {
+        const fallback = scoreJob(result.title, info.company, result.description, category, remoteHint)
+        if (fallback.score > 0) { score = fallback.score; notes = fallback.notes }
+      }
       // Results came from targeted site: queries so the bar is lower —
       // the query itself already filtered for relevance. Negative signals
       // (wrong role type) still drop the score below threshold.
@@ -544,7 +553,7 @@ async function processQuery(
         continue
       }
 
-      const { error: insertErr } = await db.from('discovered_jobs').upsert({
+      const { error: insertErr } = await db.from('discovered_jobs').insert({
         title: info.title || result.title,
         company: info.company || 'Unknown',
         url: result.url,
@@ -556,7 +565,7 @@ async function processQuery(
         fit_score: score,
         fit_notes: notes,
         status: 'pending_review',
-      }, { onConflict: 'url' })
+      })
       if (insertErr) {
         console.error(`UPSERT FAILED: ${insertErr.message} | title="${info.title}" url="${result.url}"`)
         skipped++
