@@ -518,9 +518,11 @@ async function processQuery(
         (result.url.includes('dice.com') && !result.url.includes('/job-detail/'))
       ) { skipped++; skipReasons.boardIndex++; continue }
 
-      // Skip if URL already seen (any status except rejected)
+      // Skip if URL already pending_review or applying — don't duplicate active jobs
       const { data: existingUrl } = await db.from('discovered_jobs').select('id, status').eq('url', result.url).maybeSingle()
-      if (existingUrl && existingUrl.status !== 'rejected') { skipped++; skipReasons.urlDupe++; continue }
+      if (existingUrl && (existingUrl.status === 'pending_review' || existingUrl.status === 'applying')) {
+        skipped++; skipReasons.urlDupe++; continue
+      }
 
       // Parse title and company directly from the Serper result — no AI calls.
       // We trust Serper results because they came from targeted site: queries.
@@ -542,7 +544,7 @@ async function processQuery(
         continue
       }
 
-      const { error: insertErr } = await db.from('discovered_jobs').insert({
+      const { error: insertErr } = await db.from('discovered_jobs').upsert({
         title: info.title || result.title,
         company: info.company || 'Unknown',
         url: result.url,
@@ -554,9 +556,9 @@ async function processQuery(
         fit_score: score,
         fit_notes: notes,
         status: 'pending_review',
-      })
+      }, { onConflict: 'url' })
       if (insertErr) {
-        console.error(`INSERT FAILED: ${insertErr.message} | title="${info.title}" url="${result.url}"`)
+        console.error(`UPSERT FAILED: ${insertErr.message} | title="${info.title}" url="${result.url}"`)
         skipped++
       } else {
         saved++
