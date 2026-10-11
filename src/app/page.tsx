@@ -7,6 +7,7 @@ import Link from 'next/link'
 const ALL_CATEGORIES: RoleCategory[] = [
   'proposal_writer', 'capture_manager', 'compliance_manager',
   'contracts_administrator', 'business_development', 'govcon_other', 'general_remote',
+  'pricing_analyst', 'contracting_officer', 'grants_manager', 'procurement_analyst',
 ]
 
 const categoryLabel: Record<RoleCategory, string> = {
@@ -17,6 +18,10 @@ const categoryLabel: Record<RoleCategory, string> = {
   business_development: 'Business Development',
   govcon_other: 'GovCon (Other)',
   general_remote: 'General Remote',
+  pricing_analyst: 'Pricing Analyst',
+  contracting_officer: 'Contracting Officer',
+  grants_manager: 'Grants Manager',
+  procurement_analyst: 'Procurement Analyst',
 }
 
 const statusColor: Record<string, string> = {
@@ -75,7 +80,8 @@ export default function Dashboard() {
       })
       const data = await res.json()
       if (data.success) {
-        setDiscoveryResult(`Found ${data.found} listings — ${data.saved} new jobs added to your queue.`)
+        const problems = data.errors?.length ? ` Problems: ${data.errors.join('; ')}` : ''
+        setDiscoveryResult(`Found ${data.found} listings — ${data.saved} new jobs added to your queue.${problems}`)
         load()
       } else {
         setDiscoveryResult('Discovery failed. Try again.')

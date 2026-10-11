@@ -20,6 +20,10 @@ const categoryLabel: Record<RoleCategory, string> = {
   business_development: 'Business Development',
   govcon_other: 'GovCon (Other)',
   general_remote: 'General Remote',
+  pricing_analyst: 'Pricing Analyst',
+  contracting_officer: 'Contracting Officer',
+  grants_manager: 'Grants Manager',
+  procurement_analyst: 'Procurement Analyst',
 }
 
 const STATUSES: ApplicationStatus[] = ['New', 'Applied', 'Interview', 'Offer', 'Rejected']

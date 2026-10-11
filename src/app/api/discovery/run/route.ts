@@ -7,6 +7,7 @@ export const maxDuration = 300
 const ALL_CATEGORIES: RoleCategory[] = [
   'proposal_writer', 'capture_manager', 'compliance_manager',
   'contracts_administrator', 'business_development', 'govcon_other', 'general_remote',
+  'pricing_analyst', 'contracting_officer', 'grants_manager', 'procurement_analyst',
 ]
 
 export async function POST(req: NextRequest) {

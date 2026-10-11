@@ -6,6 +6,10 @@ export type RoleCategory =
   | 'business_development'
   | 'govcon_other'
   | 'general_remote'
+  | 'pricing_analyst'
+  | 'contracting_officer'
+  | 'grants_manager'
+  | 'procurement_analyst'
 
 export type JobStatus = 'new' | 'reviewed' | 'rejected' | 'applied'
 

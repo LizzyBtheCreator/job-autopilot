@@ -42,7 +42,8 @@ create table if not exists discovered_jobs (
   salary_raw text,
   role_category text not null default 'govcon_other' check (role_category in (
     'proposal_writer', 'capture_manager', 'compliance_manager',
-    'contracts_administrator', 'business_development', 'govcon_other', 'general_remote'
+    'contracts_administrator', 'business_development', 'govcon_other', 'general_remote',
+    'pricing_analyst', 'contracting_officer', 'grants_manager', 'procurement_analyst'
   )),
   is_entry_level boolean not null default false,
   industry_tags text[] default '{}',

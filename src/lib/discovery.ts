@@ -16,6 +16,10 @@ const ROLE_TITLE_KEYWORDS: Record<RoleCategory, string[]> = {
   business_development: ['business development manager', 'business development director', 'director of business development', 'vp of business development', 'business development executive', 'bd manager'],
   govcon_other: ['proposal manager', 'proposal director', 'bid manager', 'bid coordinator', 'vp of proposals'],
   general_remote: ['program manager', 'director of operations', 'government relations', 'federal sales', 'account director'],
+  pricing_analyst: ['pricing analyst', 'proposal pricing analyst', 'price analyst', 'cost analyst', 'cost price analyst', 'pricing manager', 'proposal pricing manager', 'cost volume lead'],
+  contracting_officer: ['contracting officer', 'contract officer', 'contracting officer representative', 'cor ', 'administrative contracting officer', 'aco ', 'pco ', 'procurement officer'],
+  grants_manager: ['grants manager', 'grants administrator', 'grants management specialist', 'grant administrator', 'grants coordinator', 'federal grants manager'],
+  procurement_analyst: ['procurement analyst', 'procurement manager', 'procurement specialist', 'acquisition analyst', 'acquisition specialist', 'acquisition manager', 'federal procurement'],
 }
 
 // Search queries — built as "<keyword> remote <domain modifier>" per category.
@@ -55,6 +59,27 @@ const BASE_QUERIES: Record<RoleCategory, string[]> = {
     'program manager remote federal $100k', 'director of operations remote government',
     'government relations manager remote', 'federal sales director remote',
   ],
+  pricing_analyst: [
+    'pricing analyst remote federal', 'proposal pricing analyst remote defense',
+    'cost analyst remote federal', 'price analyst remote government',
+    'pricing analyst remote DoD', 'cost volume lead remote federal',
+    'proposal pricing manager remote federal',
+  ],
+  contracting_officer: [
+    'contracting officer remote federal', 'contracting officer representative remote',
+    'contract officer remote government', 'administrative contracting officer remote',
+    'contracting officer remote DoD', 'COR remote federal',
+  ],
+  grants_manager: [
+    'grants manager remote federal', 'grants administrator remote government',
+    'grants management specialist remote', 'federal grants manager remote',
+    'grants coordinator remote federal agency',
+  ],
+  procurement_analyst: [
+    'procurement analyst remote federal', 'acquisition analyst remote government',
+    'procurement specialist remote federal', 'acquisition specialist remote DoD',
+    'procurement manager remote federal', 'acquisition manager remote defense',
+  ],
 }
 
 interface SearchResult {
@@ -65,31 +90,47 @@ interface SearchResult {
 
 async function serperSearch(query: string): Promise<SearchResult[]> {
   const apiKey = process.env.SERPER_API_KEY
-  if (!apiKey) {
-    console.error('SERPER_API_KEY not set — skipping search')
-    return []
-  }
+  if (!apiKey) throw new SearchError('SERPER_API_KEY is not set')
   try {
     const res = await fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({ q: query, num: 10 }),
     })
-    if (!res.ok) {
-      console.error(`Serper error: ${res.status}`)
-      return []
-    }
-    const data = await res.json()
-    if (data?.statusCode === 400 || data?.message?.includes('credits')) {
-      console.error('Serper out of credits')
-      return []
-    }
+    const data = await res.json().catch(() => null)
+    if (data?.message?.includes('credits')) throw new SearchError('Serper is out of search credits')
+    if (!res.ok) throw new SearchError(`Serper error: HTTP ${res.status}`)
     return (data?.organic ?? []).map((r: { title: string; link: string; snippet?: string }) => ({
       title: r.title ?? '', url: r.link ?? '', description: r.snippet ?? '',
     }))
   } catch (err) {
+    if (err instanceof SearchError) throw err
     console.error('Serper fetch error:', err)
     return []
+  }
+}
+
+class SearchError extends Error {}
+
+// Google keeps closed postings indexed for weeks, so confirm each one is
+// still open before saving. Closed postings show up as a 404/410 (Lever,
+// Ashby), a redirect to the company board with ?error=true (Greenhouse), or
+// a 200 page with "closed" copy. Unknowns (timeouts, 403 bot blocks) are kept.
+const CLOSED_POSTING_PATTERN = /couldn['’]t find anything here|job not found|no longer accepting applications|(job|position|posting) (is|has been) (closed|filled|removed)|this (job|position|posting) is no longer (available|open|active)|the job you are looking for (is no longer|does not exist)/i
+
+async function isPostingLive(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36' },
+    })
+    if (res.status === 404 || res.status === 410) return false
+    if (/[?&]error=true/.test(res.url)) return false
+    if (!res.ok) return true
+    return !CLOSED_POSTING_PATTERN.test(await res.text())
+  } catch {
+    return true
   }
 }
 
@@ -149,14 +190,17 @@ async function processQuery(
   query: string,
   category: RoleCategory,
   platform: string,
-  db: ReturnType<typeof supabaseAdmin>
+  db: ReturnType<typeof supabaseAdmin>,
+  errors: Set<string>,
 ): Promise<{ found: number; saved: number; skipped: number }> {
   let found = 0, saved = 0, skipped = 0
   try {
     const results = await serperSearch(query)
     found = results.length
+    // Start every liveness check now so they run in parallel, not one per loop pass
+    const liveChecks = results.map(r => r.url ? isPostingLive(r.url) : Promise.resolve(false))
 
-    for (const result of results) {
+    for (const [i, result] of results.entries()) {
       if (!result.url || !result.title) { skipped++; continue }
 
       // Skip job board index/search pages — only individual postings
@@ -166,9 +210,9 @@ async function processQuery(
         result.url.match(/usajobs\.gov\/(Search|search)/)
       ) { skipped++; continue }
 
-      // URL-only dedup — skip if already saved and not rejected
-      const { data: existing } = await db.from('discovered_jobs').select('id, status').eq('url', result.url).maybeSingle()
-      if (existing && existing.status !== 'rejected') { skipped++; continue }
+      // URL-only dedup — url is unique, and rejected jobs shouldn't resurface
+      const { data: existing } = await db.from('discovered_jobs').select('id').eq('url', result.url).maybeSingle()
+      if (existing) { skipped++; continue }
 
       const remoteHint = looksRemote(result.title, result.description, result.url)
       const segments = result.title.split(/\s*[\|–—]\s*/)
@@ -177,6 +221,8 @@ async function processQuery(
 
       const { score, notes } = scoreJob(titleClean, result.description, category, remoteHint)
       if (score < 60) { skipped++; continue }
+
+      if (!(await liveChecks[i])) { skipped++; continue }
 
       const { error: insertErr } = await db.from('discovered_jobs').insert({
         title: titleClean || result.title,
@@ -193,12 +239,14 @@ async function processQuery(
       })
       if (insertErr) {
         console.error(`Insert failed: ${insertErr.message} | title="${titleClean}" url="${result.url}"`)
+        errors.add(`Database insert failed: ${insertErr.message}`)
         skipped++
       } else {
         saved++
       }
     }
   } catch (err) {
+    if (err instanceof SearchError) { errors.add(err.message); throw err }
     console.error(`Discovery error for query "${query}":`, err)
   }
   return { found, saved, skipped }
@@ -207,8 +255,9 @@ async function processQuery(
 export async function runDiscovery(
   categories: RoleCategory[] = Object.keys(BASE_QUERIES) as RoleCategory[],
   platforms: PlatformKey[] = ALL_PLATFORMS,
-): Promise<{ found: number; saved: number; skipped: number }> {
+): Promise<{ found: number; saved: number; skipped: number; errors: string[] }> {
   const db = supabaseAdmin()
+  const errors = new Set<string>()
   const selectedPlatforms = platforms.length > 0 ? platforms : ALL_PLATFORMS
 
   const queries: { query: string; category: RoleCategory; platform: PlatformKey }[] = []
@@ -225,18 +274,21 @@ export async function runDiscovery(
 
   for (let i = 0; i < queries.length; i += BATCH) {
     const batch = queries.slice(i, i + BATCH)
-    const results = await Promise.all(
-      batch.map(({ query, category, platform }) => processQuery(query, category, PLATFORMS[platform].label, db))
+    const results = await Promise.allSettled(
+      batch.map(({ query, category, platform }) => processQuery(query, category, PLATFORMS[platform].label, db, errors))
     )
     for (const r of results) {
-      totalFound += r.found
-      totalSaved += r.saved
-      totalSkipped += r.skipped
+      if (r.status !== 'fulfilled') continue
+      totalFound += r.value.found
+      totalSaved += r.value.saved
+      totalSkipped += r.value.skipped
     }
+    // Search API is down/out of credits — remaining queries would all fail too
+    if (results.some(r => r.status === 'rejected')) break
     if (i + BATCH < queries.length) {
       await new Promise(resolve => setTimeout(resolve, 500))
     }
   }
 
-  return { found: totalFound, saved: totalSaved, skipped: totalSkipped }
+  return { found: totalFound, saved: totalSaved, skipped: totalSkipped, errors: [...errors] }
 }
