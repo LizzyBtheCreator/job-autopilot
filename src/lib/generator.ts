@@ -328,7 +328,7 @@ export async function generateAndSaveApplication(jobId: string): Promise<string>
     .select('id')
     .single()
 
-  if (error) throw error
+  if (error) throw new Error(`Saving application failed: ${error.message}`)
 
   await db
     .from('discovered_jobs')
