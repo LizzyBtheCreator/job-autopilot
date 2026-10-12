@@ -394,12 +394,13 @@ ${body}
   const HIDDEN_STATUSES = ['closed', 'rejected', 'unavailable']
 
   const filtered = apps.filter(a => {
-    const isHidden = HIDDEN_STATUSES.includes(a.status)
+    const statusLower = (a.status ?? '').toLowerCase()
+    const isHidden = HIDDEN_STATUSES.includes(statusLower)
     if (!showHidden && isHidden) return false
     if (filterStatus === 'active') {
       if (isHidden) return false
     } else if (filterStatus !== 'all') {
-      if (a.status !== filterStatus) return false
+      if (statusLower !== filterStatus.toLowerCase()) return false
     }
     if (greenhouseOnly) {
       if (!a.job?.url?.includes('greenhouse.io')) return false
@@ -453,7 +454,7 @@ ${body}
     load()
   }
 
-  const submittedApps = apps.filter(a => ['submitted', 'interviewing', 'offer'].includes(a.status))
+  const submittedApps = apps.filter(a => ['submitted', 'interviewing', 'offer', 'Applied'].includes(a.status))
 
   return (
     <div className="flex gap-6 h-[calc(100vh-8rem)]">
@@ -495,15 +496,21 @@ ${body}
 
         {/* Status filter */}
         <div className="flex flex-wrap gap-1 flex-shrink-0">
-          {['active', 'ready', 'submitted', 'interviewing', 'offer'].map(s => (
+          {[
+            { value: 'active', label: 'Active' },
+            { value: 'new', label: 'Ready to Apply' },
+            { value: 'applied', label: 'Applied' },
+            { value: 'interviewing', label: 'Interviewing' },
+            { value: 'offer', label: 'Offer' },
+          ].map(s => (
             <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
+              key={s.value}
+              onClick={() => setFilterStatus(s.value)}
               className={`text-xs px-2 py-1 rounded-full transition-colors ${
-                filterStatus === s ? 'bg-white text-gray-900' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                filterStatus === s.value ? 'bg-white text-gray-900' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
               }`}
             >
-              {s === 'active' ? 'Active' : s}
+              {s.label}
             </button>
           ))}
           <button
