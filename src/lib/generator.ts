@@ -675,7 +675,7 @@ export async function generateAndSaveApplication(jobId: string): Promise<string>
 
   const { data: app, error } = await db
     .from('applications')
-    .upsert({ job_id: jobId, resume_text: resume, status: 'ready' }, { onConflict: 'job_id' })
+    .upsert({ job_id: jobId, resume_text: resume, status: 'New' }, { onConflict: 'job_id' })
     .select('id')
     .single()
 
