@@ -578,13 +578,12 @@ async function processQuery(
         company: info.company || 'Unknown',
         url: result.url,
         description: result.description,
-        category,
+        role_category: category,
         is_remote: info.isRemote ?? false,
         salary_raw: info.salaryRaw || null,
-        is_commission_only: false,
         fit_score: score,
         fit_notes: notes,
-        status: 'pending_review',
+        status: 'new',
       })
       if (insertErr) {
         console.error(`UPSERT FAILED: ${insertErr.message} | title="${info.title}" url="${result.url}"`)
@@ -708,13 +707,12 @@ async function processTempResults(
       company: 'See listing',
       url: result.url,
       description: result.description,
-      category: 'temp',
+      role_category: 'govcon',
       is_remote: true,
       salary_raw: null,
-      is_commission_only: false,
       fit_score: score,
       fit_notes: notes || 'temp agency scrape',
-      status: 'pending_review',
+      status: 'new',
     })
     if (insertErr) {
       console.error(`TEMP INSERT FAILED: ${insertErr.message} | title="${title}"`)
