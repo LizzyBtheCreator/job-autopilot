@@ -210,7 +210,7 @@ export async function generateResumeAndCoverLetter(job: DiscoveredJob): Promise<
   resume: string
   coverLetter: string
 }> {
-  const category = (job.category ?? 'sales') as Category
+  const category = ((job as unknown as Record<string, unknown>).role_category ?? job.category ?? 'govcon') as Category
   const context = categoryContext[category]
   const includeTrialSection = isSalaryOver100k(job)
 
@@ -675,11 +675,11 @@ export async function generateAndSaveApplication(jobId: string): Promise<string>
 
   const { data: app, error } = await db
     .from('applications')
-    .upsert({ job_id: jobId, resume_text: resume, cover_letter: coverLetter, status: 'ready' }, { onConflict: 'job_id' })
+    .upsert({ job_id: jobId, resume_text: resume, status: 'ready' }, { onConflict: 'job_id' })
     .select('id')
     .single()
 
-  if (error) throw error
+  if (error) throw new Error(error.message)
 
   // Remove from queue by marking the job as approved
   await db
