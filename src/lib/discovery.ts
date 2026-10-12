@@ -509,6 +509,25 @@ function scoreJob(title: string, _company: string, description: string, _categor
   return { score, notes: matched.join(', ') }
 }
 
+const CLOSED_PATTERN = /no longer accepting|job not found|position has been filled|posting.*closed|no longer available|this job.*closed|job.*no longer|position.*filled|requisition.*closed|opening.*filled/i
+
+async function isPostingLive(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36' },
+    })
+    if (res.status === 404 || res.status === 410) return false
+    if (/[?&]error=true/i.test(res.url)) return false
+    if (!res.ok) return true // don't discard on bot-block or server error
+    const text = await res.text()
+    return !CLOSED_PATTERN.test(text)
+  } catch {
+    return true // network timeout = assume live, don't discard
+  }
+}
+
 async function processQuery(
   query: string,
   category: Category,
@@ -569,9 +588,11 @@ async function processQuery(
       if (score < minScore) {
         skipped++
         if (score === 0) skipReasons.badTitle++; else skipReasons.lowScore++
-        console.log(`SKIP score=${score} title="${info.title}" notes="${notes}"`)
         continue
       }
+
+      // Check posting is still live before saving
+      if (!(await isPostingLive(result.url))) { skipped++; continue }
 
       const { error: insertErr } = await db.from('discovered_jobs').insert({
         title: info.title || result.title,
