@@ -452,16 +452,34 @@ function scoreJob(title: string, _company: string, description: string, _categor
 
   // Remote is preferred but not a hard filter — queries already target remote roles
 
-  // HARD FILTER 2: Title must contain a proposal or capture keyword
-  const proposalCaptureTitles = [
+  // HARD FILTER 2: Title must contain a qualifying keyword
+  const qualifyingTitles = [
+    // Proposal and capture
     'proposal manager', 'proposal director', 'proposal writer', 'proposal coordinator',
     'proposal specialist', 'proposal analyst', 'proposal development', 'proposal operations',
     'capture manager', 'capture director', 'capture specialist', 'director of capture',
     'director of proposals', 'vp of proposals', 'vp of capture', 'head of capture',
     'bid manager', 'bid coordinator', 'bid writer', 'bid specialist',
+    // Pricing and cost
+    'pricing analyst', 'price analyst', 'cost analyst', 'cost volume', 'pricing manager',
+    'proposal pricing', 'cost price analyst',
+    // Contracting and contracts
+    'contracting officer', 'contract officer', 'contract specialist', 'contracts administrator',
+    'contracts manager', 'contract administrator', 'contract manager', 'procurement officer',
+    'contracting specialist',
+    // Grants
+    'grants manager', 'grants administrator', 'grants coordinator', 'grants management',
+    'grant administrator', 'grant manager', 'federal grants',
+    // Procurement and acquisition
+    'procurement analyst', 'procurement specialist', 'procurement manager',
+    'acquisition analyst', 'acquisition specialist', 'acquisition manager',
+    // Business development
+    'business development manager', 'business development director', 'bd manager',
+    // Compliance
+    'compliance manager', 'compliance director', 'compliance program manager',
   ]
-  const titleMatches = proposalCaptureTitles.some(role => titleLower.includes(role))
-  if (!titleMatches) return { score: 0, notes: 'not a proposal or capture role' }
+  const titleMatches = qualifyingTitles.some(role => titleLower.includes(role))
+  if (!titleMatches) return { score: 0, notes: 'title does not match any qualifying role' }
 
   // Hard disqualifiers — tech roles that happen to say "proposal"
   if (/software engineer|software developer|devops|data scientist|machine learning|ml engineer/.test(titleLower)) {
@@ -483,7 +501,7 @@ function scoreJob(title: string, _company: string, description: string, _categor
     score += 8; matched.push('senior level')
   }
   // Govcon skills bonus
-  if (/shipley|idiq|gwac|ota|far|dfars|sam\.gov/.test(text)) {
+  if (/shipley|idiq|gwac|ota|far|dfars|sam\.gov|2 cfr|cdbg|grants\.gov/.test(text)) {
     score += 5; matched.push('govcon skills')
   }
 
@@ -528,7 +546,9 @@ async function processQuery(
       // Pick the segment of the title that contains the actual job title.
       // Serper often returns "Company | Job Title" or "Job Title | Company".
       // Splitting on | and taking the segment with a job keyword avoids stripping the title.
-      const proposalKeywords = ['proposal', 'capture', 'bid manager', 'bid coordinator', 'bid writer']
+      const proposalKeywords = ['proposal', 'capture', 'bid manager', 'bid coordinator', 'bid writer',
+        'pricing', 'cost analyst', 'contracting', 'contract specialist', 'contracts administrator',
+        'grants', 'procurement', 'acquisition', 'business development', 'compliance manager']
       const segments = result.title.split(/\s*[\|–—]\s*/)
       const titleClean = segments.find(s => proposalKeywords.some(k => s.toLowerCase().includes(k)))?.trim()
         ?? segments[0].trim()
