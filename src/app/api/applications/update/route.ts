@@ -9,8 +9,26 @@ export async function POST(req: NextRequest) {
 
     const db = supabaseAdmin()
 
+    // Map legacy field names and status values to what the DB actually has,
+    // then strip any columns the table doesn't support.
+    const ALLOWED = new Set(['status', 'resume_text', 'applied_at', 'notes', 'updated_at'])
+    const STATUS_MAP: Record<string, string> = {
+      submitted: 'Applied', ready: 'New', draft: 'New',
+      rejected: 'Rejected', interviewing: 'Applied', offer: 'Applied',
+    }
+    const mapped: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(fields)) {
+      if (k === 'submitted_at') { mapped.applied_at = v; continue }
+      if (k === 'status' && typeof v === 'string') {
+        mapped.status = STATUS_MAP[v.toLowerCase()] ?? v; continue
+      }
+      if (ALLOWED.has(k)) mapped[k] = v
+      // silently drop cover_letter, fractional_brochure, thank_you_sent_at, interview_date
+    }
+    mapped.updated_at = new Date().toISOString()
+
     // Do the update first — this is the critical operation
-    const { error } = await db.from('applications').update(fields).eq('id', id)
+    const { error } = await db.from('applications').update(mapped).eq('id', id)
     if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 })
 
     // If marking as submitted, increment today's applied count
