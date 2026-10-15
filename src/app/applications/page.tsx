@@ -222,8 +222,8 @@ export default function ApplicationsPage() {
   async function updateStatus(status: string) {
     if (!selected) return
     const extraFields: Record<string, string> = {}
-    if (status === 'submitted' && !selected.submitted_at) {
-      extraFields.submitted_at = new Date().toISOString()
+    if (status === 'submitted' && !selected.applied_at) {
+      extraFields.applied_at = new Date().toISOString()
     }
     const res = await apiFetch('/api/applications/update', { id: selected.id, status, ...extraFields })
     const data = await res.json()
@@ -583,8 +583,8 @@ ${body}
                 <p className="font-medium text-sm truncate">{app.job?.title ?? 'Unknown role'}</p>
                 <p className="text-gray-400 text-xs truncate">{app.job?.company}</p>
                 <div className="flex flex-col gap-0.5 mt-0.5">
-                  {app.submitted_at
-                    ? <p className="text-gray-500 text-xs">Applied {daysAgo(app.submitted_at)} ({fmtDate(app.submitted_at)})</p>
+                  {app.applied_at
+                    ? <p className="text-gray-500 text-xs">Applied {daysAgo(app.applied_at)} ({fmtDate(app.applied_at)})</p>
                     : <p className="text-gray-600 text-xs">Added {fmtDate(app.created_at)}</p>
                   }
                   {(() => { const ty = thankYouStatus(app); return ty ? <p className={`text-xs font-medium ${ty.color}`}>{ty.label}</p> : null })()}
@@ -658,8 +658,8 @@ ${body}
                   {selected.job?.salary_raw && (
                     <span className="text-gray-500 text-xs">{selected.job.salary_raw}</span>
                   )}
-                  {selected.submitted_at && (
-                    <span className="text-gray-500 text-xs">Applied {daysAgo(selected.submitted_at)}</span>
+                  {selected.applied_at && (
+                    <span className="text-gray-500 text-xs">Applied {daysAgo(selected.applied_at)}</span>
                   )}
                 </div>
               </div>
@@ -825,10 +825,10 @@ ${body}
                         <span className="text-blue-300">{fmtDate(selected.form_filled_at)} ({daysAgo(selected.form_filled_at)})</span>
                       </div>
                     )}
-                    {selected.submitted_at ? (
+                    {selected.applied_at ? (
                       <div className="flex gap-3 text-sm">
                         <span className="text-gray-500 w-32 flex-shrink-0">Submitted</span>
-                        <span className="text-green-400">{fmtDate(selected.submitted_at)} ({daysAgo(selected.submitted_at)})</span>
+                        <span className="text-green-400">{fmtDate(selected.applied_at)} ({daysAgo(selected.applied_at)})</span>
                       </div>
                     ) : (
                       <div className="flex gap-3 text-sm">
