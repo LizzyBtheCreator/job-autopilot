@@ -1,335 +1,173 @@
 import 'server-only'
 import { supabaseAdmin } from './supabase'
-import type { Category } from './types'
 
-// Excluded job board domains — forces Google to return company career pages only
-const BOARD_EXCLUSIONS = [
-  '-site:indeed.com',
-  '-site:linkedin.com',
-  '-site:glassdoor.com',
-  '-site:ziprecruiter.com',
-  '-site:monster.com',
-  '-site:careerbuilder.com',
-  '-site:salary.com',
-  '-site:payscale.com',
-  '-site:simplyhired.com',
-  '-site:jooble.org',
-  '-site:snagajob.com',
-  '-site:dice.com',
-].join(' ')
-
-// 81 targeted queries across 8 job families.
-// Each query hits the open web with job board exclusions so Google returns
-// results from actual company career pages (Workday, Greenhouse, iCIMS,
-// company-subdomain careers pages) rather than aggregator listings.
-const QUERIES: { query: string; category: Category }[] = [
-  // ── Proposals & Capture ───────────────────────────────────────────
-  { query: `"proposal manager" remote federal ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"senior proposal manager" remote ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"proposal director" remote federal defense ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"capture manager" remote federal ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"senior capture manager" remote ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"director of capture" remote federal ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"proposal operations manager" remote ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"proposal development manager" remote federal ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"bid manager" remote federal defense ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"federal proposal manager" remote ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-  { query: `"government proposal manager" remote ${BOARD_EXCLUSIONS}`, category: 'proposals' },
-
-  // ── Contracts & Procurement ───────────────────────────────────────
-  { query: `"contracts manager" remote federal government ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"contract administrator" remote federal ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"contract specialist" remote federal government ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"procurement manager" remote federal ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"procurement analyst" remote federal government ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"contracting officer" remote federal ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"vendor manager" remote federal government ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"procurement specialist" remote federal ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"acquisition manager" remote federal ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-  { query: `"government contracts" manager remote ${BOARD_EXCLUSIONS}`, category: 'contracts' },
-
-  // ── Compliance & Risk ─────────────────────────────────────────────
-  { query: `"compliance manager" remote federal government ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"regulatory compliance" manager remote ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"government compliance" manager remote ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"compliance director" remote federal ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"risk and compliance" manager remote government ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"compliance program manager" remote federal ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"quality assurance" manager remote federal government ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"program integrity" manager remote federal ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"regulatory affairs" manager remote government ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-  { query: `"federal compliance" manager remote ${BOARD_EXCLUSIONS}`, category: 'compliance' },
-
-  // ── Grants & Programs ─────────────────────────────────────────────
-  { query: `"grants manager" remote federal ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"grants administrator" remote federal ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"grants management" director remote ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"grant compliance" manager remote ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"program administrator" remote federal government ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"technical assistance" manager remote federal ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"federal grants" manager remote ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"2 CFR" grants manager remote ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"HUD" grants program manager remote ${BOARD_EXCLUSIONS}`, category: 'grants' },
-  { query: `"CDBG" program manager remote ${BOARD_EXCLUSIONS}`, category: 'grants' },
-
-  // ── Program & Operations ──────────────────────────────────────────
-  { query: `"program manager" remote federal government defense ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"program operations manager" remote federal ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"PMO manager" remote federal government ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"program management office" director remote ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"program controls" manager remote federal ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"portfolio manager" remote federal government ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"senior program analyst" remote federal ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"strategic operations" director remote ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"process improvement" manager remote federal ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-  { query: `"program governance" manager remote federal ${BOARD_EXCLUSIONS}`, category: 'program_ops' },
-
-  // ── Government & Public Sector ────────────────────────────────────
-  { query: `"government consulting" director remote ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"public sector consulting" director remote ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"government programs" manager remote ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"community development" director remote federal ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"economic development" director remote ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"workforce development" manager remote federal ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"organizational development" director remote federal ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"public sector" program manager remote ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"government relations" director remote ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-  { query: `"federal programs" manager remote ${BOARD_EXCLUSIONS}`, category: 'govcon_public' },
-
-  // ── Business Development ──────────────────────────────────────────
-  { query: `"business development director" remote federal government ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"business development manager" remote federal defense ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"vice president business development" remote federal ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"director of business development" remote federal ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"strategic partnerships" director remote federal ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"account director" remote federal government ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"sales director" remote federal government ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"professional services" director remote federal ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"BD director" remote federal defense ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-  { query: `"client development" director remote federal ${BOARD_EXCLUSIONS}`, category: 'business_dev' },
-
-  // ── Consulting ────────────────────────────────────────────────────
-  { query: `"management consulting" director remote federal government ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"implementation consulting" manager remote federal ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"government consulting" manager remote ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"program consulting" director remote federal ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"senior consultant" remote federal government ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"principal consultant" remote federal government ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"operations consulting" director remote federal ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"public sector" consultant director remote ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"technical assistance" consultant remote federal ${BOARD_EXCLUSIONS}`, category: 'consulting' },
-  { query: `"managing consultant" remote federal government ${BOARD_EXCLUSIONS}`, category: 'consulting' },
+// ─────────────────────────────────────────────────────────────────────────────
+// Target companies — all use Greenhouse's public job board API.
+// Free, no API key, no quota, no credits. Runs unlimited times.
+// Organized by primary focus but most employ across all job families.
+// ─────────────────────────────────────────────────────────────────────────────
+const COMPANIES: string[] = [
+  // Government consulting & professional services
+  'guidehouse', 'icf', 'noblis', 'lmi', 'anser', 'mitre', 'rand',
+  'urban-institute', 'mathematica', 'abt-associates', 'westat',
+  'prtm', 'boozallen', 'leidos', 'saic', 'caci', 'mantech',
+  'peraton', 'amentum', 'chenega', 'akima', 'caliber-systems',
+  'mav6', 'engility', 'dxc', 'unison', 'kforce',
+  // Big consulting / management consulting
+  'mckinsey', 'bcg', 'bain', 'accenture', 'deloitte', 'pwc', 'kpmg', 'ey',
+  'oliver-wyman', 'roland-berger', 'strategy-and', 'a-t-kearney',
+  'huron-consulting', 'navigant', 'fti-consulting', 'ankura',
+  'west-monroe', 'slalom', 'protiviti', 'kroll', 'tetra-tech',
+  'aecom', 'burns-mcdonnell', 'wsatkins', 'cdm-smith',
+  // Federal program / grants / compliance
+  'urban', 'policylink', 'center-on-budget', 'nlihc',
+  'national-council-nonprofits', 'vera-institute', 'csg-justice',
+  'third-sector', 'grantmakers-health', 'childrendefense',
+  'community-solutions', 'enterprise-community', 'lisc',
+  'neighborworks', 'homebase', 'nhpf',
+  // Compliance & risk
+  'riskonnect', 'rsm', 'baker-tilly', 'moss-adams', 'crowe',
+  'forvis', 'plante-moran', 'wipfli', 'marcum',
+  'ankura-consulting', 'cohnreznick', 'grant-thornton',
+  // Healthcare / federal health programs
+  'lewin-group', 'health-management-associates', 'maximus',
+  'molina-healthcare', 'centene', 'magellan-health',
+  'conduent', 'cotiviti', 'evolent-health', 'novu',
+  // Technology companies with large federal practices
+  'palantir', 'oracle', 'sap', 'microsoft', 'amazon',
+  'google', 'salesforce', 'servicenow', 'verint',
+  'carahsoft', 'immuta', 'telos', 'perspecta',
+  // Workforce / economic development / nonprofits
+  'jobstogether', 'workforce-development', 'goodwill',
+  'opportunities-industrialization', 'year-up', 'per-scholas',
+  'merit-america', 'general-assembly', 'teals',
+  // Housing / community development
+  'habitat-for-humanity', 'enterprise', 'local-initiatives',
+  'low-income-investment-fund', 'national-equity-fund',
+  'boston-capital', 'raymond-james-tax-credit',
+  // Financial services / public finance
+  'public-financial-management', 'ehlers', 'piper-sandler',
+  'raymond-james', 'stifel', 'baird',
+  // Research & policy
+  'rand-corporation', 'urban-institute', 'brookings', 'cato',
+  'heritage', 'center-american-progress', 'new-america',
+  'aspen-institute', 'carnegie', 'kaiser-family-foundation',
+  // Infrastructure / engineering (program mgmt roles)
+  'parsons', 'jacobs', 'wsp', 'hntb', 'pbworld',
+  'stantec', 'gannett-fleming', 'hdr', 'louis-berger',
+  // Defense & intelligence (capture / proposal / contracts)
+  'northrop-grumman', 'l3harris', 'bae-systems', 'raytheon',
+  'general-dynamics', 'lockheed-martin', 'boeing', 'textron',
+  'sierra-nevada', 'vectrus', 'dyncorp', 'parsons-defense',
+  'titan-defense', 'apogee', 'gdit', 'unison-consulting',
+  // SaaS / tech with BD / program roles
+  'stripe', 'twilio', 'zendesk', 'hubspot', 'klaviyo',
+  'lattice', 'rippling', 'brex', 'ramp', 'merge',
 ]
 
-interface SearchResult {
-  title: string
-  url: string
-  description: string
-}
-
-async function googleCseSearch(query: string): Promise<SearchResult[]> {
-  const apiKey = process.env.GOOGLE_CSE_API_KEY
-  const cseId = process.env.GOOGLE_CSE_ID
-  if (!apiKey || !cseId) {
-    console.error('Google CSE: GOOGLE_CSE_API_KEY or GOOGLE_CSE_ID not set')
-    return []
-  }
-  try {
-    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&q=${encodeURIComponent(query)}&num=10`
-    const res = await fetch(url)
-    if (!res.ok) {
-      const body = await res.text().catch(() => '')
-      console.error(`Google CSE error: ${res.status} ${res.statusText} — ${body.slice(0, 200)}`)
-      return []
-    }
-    const data = await res.json()
-    return (data?.items ?? []).map((r: { title: string; link: string; snippet?: string }) => ({
-      title: r.title ?? '',
-      url: r.link ?? '',
-      description: r.snippet ?? '',
-    }))
-  } catch (err) {
-    console.error('Google CSE fetch error:', err)
-    return []
-  }
-}
-
-// All job titles we accept — covers every role family from the expanded list
-const QUALIFYING_TITLES = [
+// ─────────────────────────────────────────────────────────────────────────────
+// Job title keywords — any job whose title contains one of these passes.
+// ─────────────────────────────────────────────────────────────────────────────
+const TITLE_KEYWORDS = [
   // Proposals & Capture
-  'proposal manager', 'proposal director', 'proposal writer', 'proposal coordinator',
-  'proposal specialist', 'proposal analyst', 'proposal development', 'proposal operations',
-  'capture manager', 'capture director', 'capture specialist', 'director of capture',
-  'director of proposals', 'vp of proposals', 'vp of capture', 'head of capture',
-  'bid manager', 'bid coordinator', 'bid writer', 'bid specialist',
-  'federal proposal', 'government proposal', 'public sector proposal',
+  'proposal', 'capture', 'bid manager', 'bid coordinator',
   // Contracts & Procurement
-  'contracting officer', 'contract officer', 'contract specialist', 'contracts administrator',
-  'contracts manager', 'contract administrator', 'contract manager', 'contract management',
-  'procurement officer', 'contracting specialist', 'procurement manager', 'procurement analyst',
-  'procurement specialist', 'acquisition manager', 'acquisition analyst', 'acquisition specialist',
-  'vendor manager', 'vendor management', 'government contracts',
+  'contract', 'contracts', 'procurement', 'acquisition', 'vendor manager',
   // Compliance & Risk
-  'compliance manager', 'compliance director', 'compliance program manager', 'compliance operations',
-  'regulatory compliance', 'government compliance', 'federal compliance', 'program compliance',
-  'risk and compliance', 'compliance and risk', 'quality assurance', 'program integrity',
-  'regulatory affairs', 'policy and compliance',
-  // Grants
-  'grants manager', 'grants administrator', 'grants coordinator', 'grants management',
-  'grant administrator', 'grant manager', 'grant compliance', 'federal grants',
-  'program administrator', 'technical assistance',
+  'compliance', 'regulatory', 'risk and compliance', 'program integrity',
+  'quality assurance', 'policy and compliance',
+  // Grants & Programs
+  'grants', 'grant ', 'grant manager', 'grant admin', 'technical assistance',
+  'program administrator',
   // Program & Operations
-  'program manager', 'program operations', 'pmo manager', 'program management office',
-  'program controls', 'portfolio manager', 'program analyst', 'senior program analyst',
-  'strategic operations', 'process improvement', 'program governance', 'business operations',
-  'operations manager', 'operations director',
+  'program manager', 'program operations', 'pmo', 'portfolio manager',
+  'program analyst', 'program director', 'program governance',
+  'strategic operations', 'process improvement', 'operations manager',
+  'operations director', 'program controls',
   // Government & Public Sector
-  'government consulting', 'public sector consulting', 'government programs',
-  'community development', 'economic development', 'workforce development',
-  'organizational development', 'government relations', 'federal programs',
+  'government consulting', 'public sector', 'community development',
+  'economic development', 'workforce development', 'government programs',
+  'government relations', 'federal programs',
   // Business Development
-  'business development manager', 'business development director', 'bd manager', 'bd director',
-  'director of business development', 'vp of business development', 'vice president business development',
-  'strategic partnerships', 'account director', 'sales director', 'professional services director',
-  'client development',
+  'business development', 'bd director', 'bd manager',
+  'capture director', 'director of business', 'vice president business',
+  'strategic partnerships', 'account director', 'sales director',
+  'professional services director', 'client development',
   // Consulting
-  'management consulting', 'implementation consulting', 'program consulting',
-  'operations consulting', 'senior consultant', 'principal consultant', 'managing consultant',
-  // Pricing (keep from before)
-  'pricing analyst', 'price analyst', 'cost analyst', 'pricing manager',
+  'senior consultant', 'principal consultant', 'managing consultant',
+  'management consulting', 'implementation consultant',
 ]
 
-function scoreJob(title: string, description: string): { score: number; notes: string } {
-  const titleLower = title.toLowerCase()
-  const text = (title + ' ' + description).toLowerCase()
-  const matched: string[] = []
+// Hard disqualifiers — reject these even if a keyword matches
+const DISQUALIFY = [
+  'software engineer', 'software developer', 'devops', 'data scientist',
+  'machine learning', 'ml engineer', 'frontend', 'backend', 'full stack',
+  'fullstack', 'data engineer', 'mobile engineer', 'ios engineer',
+  'android engineer', 'site reliability', 'security engineer',
+  'network engineer', 'cloud engineer',
+]
 
-  // Hard filter: title must contain a qualifying keyword
-  const titleMatch = QUALIFYING_TITLES.find(role => titleLower.includes(role))
-  if (!titleMatch) return { score: 0, notes: 'title does not match any qualifying role' }
+function titleMatches(title: string): boolean {
+  const t = title.toLowerCase()
+  if (DISQUALIFY.some(d => t.includes(d))) return false
+  return TITLE_KEYWORDS.some(k => t.includes(k))
+}
 
-  // Hard disqualifier: software engineering roles that happen to use qualifying words
-  if (/software engineer|software developer|devops|data scientist|machine learning|ml engineer|frontend|backend|full.?stack/.test(titleLower)) {
-    return { score: 0, notes: 'tech role disqualified' }
+interface GreenhouseJob {
+  id: number
+  title: string
+  absolute_url: string
+  location?: { name?: string }
+  content?: string
+}
+
+async function fetchGreenhouseJobs(company: string): Promise<GreenhouseJob[]> {
+  try {
+    const url = `https://boards-api.greenhouse.io/v1/boards/${company}/jobs`
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(10000),
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data?.jobs) ? data.jobs : []
+  } catch {
+    return []
   }
+}
 
+function scoreJob(title: string, location: string): number {
+  const t = title.toLowerCase()
+  const l = (location ?? '').toLowerCase()
   let score = 70
-  matched.push(titleMatch)
 
   // Remote confirmed
-  if (/remote|work from home/.test(text)) { score += 5; matched.push('remote') }
-  // Federal/defense/government domain
-  if (/federal|dod|defense|government contract|military|civilian agency|public sector|intelligence|hud|hhs|gsa/.test(text)) {
-    score += 10; matched.push('federal/gov')
+  if (l.includes('remote') || l.includes('anywhere') || l.includes('united states')) {
+    score += 10
   }
-  // Senior/director level
-  if (/senior|director|vp |vice president|head of|chief|principal|lead |managing/.test(titleLower)) {
-    score += 8; matched.push('senior level')
+  // Senior / director level
+  if (/senior|director|vp |vice president|head of|chief|principal|lead |managing/.test(t)) {
+    score += 8
   }
-  // Domain skill signals
-  if (/shipley|idiq|gwac|ota|far|dfars|sam\.gov|2 cfr|cdbg|grants\.gov|pmp|cmmc|nist/.test(text)) {
-    score += 5; matched.push('domain skills')
+  // Federal / government domain signals
+  if (/federal|government|public sector|defense|dod|civilian|grants|compliance/.test(t)) {
+    score += 7
   }
 
-  return { score: Math.min(95, score), notes: matched.join(', ') }
+  return Math.min(95, score)
 }
 
-const CLOSED_PATTERN = /no longer accepting|job not found|position has been filled|posting.*closed|no longer available|this job.*closed|job.*no longer|position.*filled|requisition.*closed|opening.*filled/i
-
-async function isPostingLive(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, {
-      redirect: 'follow',
-      signal: AbortSignal.timeout(8000),
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36' },
-    })
-    if (res.status === 404 || res.status === 410) return false
-    if (/[?&]error=true/i.test(res.url)) return false
-    if (!res.ok) return true
-    const text = await res.text()
-    return !CLOSED_PATTERN.test(text)
-  } catch {
-    return true
-  }
-}
-
-// Strip title to the job title segment — search results often return "Title | Company" or "Company - Title"
-function cleanTitle(raw: string): string {
-  const segments = raw.split(/\s*[\|–—]\s*/)
-  // Pick the segment that contains a qualifying keyword
-  const match = segments.find(s => QUALIFYING_TITLES.some(k => s.toLowerCase().includes(k)))
-  return (match ?? segments[0]).trim()
-}
-
-async function processQuery(
-  query: string,
-  category: Category,
-  db: ReturnType<typeof supabaseAdmin>
-): Promise<{ found: number; saved: number; skipped: number }> {
-  let found = 0, saved = 0, skipped = 0
-  try {
-    const results = await googleCseSearch(query)
-    found = results.length
-
-    for (const result of results) {
-      if (!result.url || !result.title) { skipped++; continue }
-
-      // Skip job board index/search pages — only individual postings
-      const isIndexPage = (
-        /\/(jobs|careers|search|listings)\??[^/]*$/.test(result.url) &&
-        !/\/job\/|\/jobs\/\d|\/position\/|\/opening\/|\/req\//.test(result.url)
-      )
-      if (isIndexPage) { skipped++; continue }
-
-      // Skip if URL already in DB (any status except rejected)
-      const { data: existing } = await db
-        .from('discovered_jobs')
-        .select('id, status')
-        .eq('url', result.url)
-        .maybeSingle()
-      if (existing && existing.status !== 'rejected') { skipped++; continue }
-
-      const title = cleanTitle(result.title)
-      const { score, notes } = scoreJob(title, result.description)
-
-      if (score < 60) {
-        // Try full raw title as fallback
-        const fallback = scoreJob(result.title, result.description)
-        if (fallback.score < 60) { skipped++; continue }
-      }
-
-      // Verify posting is still live before saving
-      if (!(await isPostingLive(result.url))) { skipped++; continue }
-
-      const isRemote = /remote|work from home/i.test(result.title + ' ' + result.description)
-
-      const { error: insertErr } = await db.from('discovered_jobs').insert({
-        title,
-        company: 'See listing',
-        url: result.url,
-        description: result.description,
-        role_category: 'govcon_other',
-        role_type: category,
-        is_remote: isRemote,
-        salary_raw: null,
-        fit_score: score,
-        fit_notes: notes,
-        status: 'new',
-      })
-      if (insertErr) {
-        console.error(`INSERT FAILED: ${insertErr.message} | title="${title}" url="${result.url}"`)
-        skipped++
-      } else {
-        saved++
-      }
-    }
-  } catch (err) {
-    console.error(`Discovery error for query "${query.slice(0, 60)}":`, err)
-  }
-  if (found > 0) {
-    console.log(`QUERY "${query.slice(0, 60)}" -> found=${found} saved=${saved} skipped=${skipped}`)
-  }
-  return { found, saved, skipped }
+function mapCategory(title: string): string {
+  const t = title.toLowerCase()
+  if (/proposal|capture|bid/.test(t)) return 'proposals'
+  if (/contract|procurement|acquisition|vendor/.test(t)) return 'contracts'
+  if (/compliance|regulatory|risk|integrity/.test(t)) return 'compliance'
+  if (/grant|technical assistance|program admin/.test(t)) return 'grants'
+  if (/program manager|program ops|pmo|portfolio|program analyst|program director|program controls|program govern|operations manager|operations director|process improvement|strategic ops/.test(t)) return 'program_ops'
+  if (/community development|economic development|workforce|government program|government relation|public sector|federal program/.test(t)) return 'govcon_public'
+  if (/business development|bd director|bd manager|partnerships|account director|sales director|client development/.test(t)) return 'business_dev'
+  if (/consultant|consulting/.test(t)) return 'consulting'
+  return 'govcon'
 }
 
 export async function runDiscovery(): Promise<{ found: number; saved: number; skipped: number }> {
@@ -338,20 +176,69 @@ export async function runDiscovery(): Promise<{ found: number; saved: number; sk
 
   let totalFound = 0, totalSaved = 0, totalSkipped = 0
 
-  // Run in batches of 5 to avoid rate limiting the Google CSE API
-  const BATCH = 5
-  for (let i = 0; i < QUERIES.length; i += BATCH) {
-    const batch = QUERIES.slice(i, i + BATCH)
-    const results = await Promise.all(
-      batch.map(({ query, category }) => processQuery(query, category, db))
-    )
+  // Process companies in batches of 10 to avoid overwhelming Vercel's function timeout
+  const BATCH = 10
+  for (let i = 0; i < COMPANIES.length; i += BATCH) {
+    const batch = COMPANIES.slice(i, i + BATCH)
+
+    const results = await Promise.all(batch.map(async (company) => {
+      const jobs = await fetchGreenhouseJobs(company)
+      let found = 0, saved = 0, skipped = 0
+
+      for (const job of jobs) {
+        found++
+        if (!job.title || !job.absolute_url) { skipped++; continue }
+        if (!titleMatches(job.title)) { skipped++; continue }
+
+        // Skip if URL already in DB
+        const { data: existing } = await db
+          .from('discovered_jobs')
+          .select('id')
+          .eq('url', job.absolute_url)
+          .maybeSingle()
+        if (existing) { skipped++; continue }
+
+        const location = job.location?.name ?? ''
+        const score = scoreJob(job.title, location)
+        const category = mapCategory(job.title)
+        const isRemote = /remote|anywhere|united states/i.test(location)
+
+        const { error } = await db.from('discovered_jobs').insert({
+          title: job.title,
+          company: company.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          url: job.absolute_url,
+          description: job.content
+            ? job.content.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 500)
+            : null,
+          role_category: 'govcon_other',
+          role_type: category,
+          is_remote: isRemote,
+          salary_raw: null,
+          fit_score: score,
+          fit_notes: category,
+          status: 'new',
+        })
+
+        if (error) {
+          console.error(`INSERT FAILED [${company}]: ${error.message}`)
+          skipped++
+        } else {
+          saved++
+        }
+      }
+
+      return { found, saved, skipped }
+    }))
+
     for (const r of results) {
       totalFound += r.found
       totalSaved += r.saved
       totalSkipped += r.skipped
     }
-    if (i + BATCH < QUERIES.length) {
-      await new Promise(resolve => setTimeout(resolve, 300))
+
+    // Small delay between batches to stay polite
+    if (i + BATCH < COMPANIES.length) {
+      await new Promise(r => setTimeout(r, 200))
     }
   }
 
@@ -359,5 +246,6 @@ export async function runDiscovery(): Promise<{ found: number; saved: number; sk
     await db.rpc('increment_discovered', { p_date: today, p_count: totalSaved })
   }
 
+  console.log(`Discovery complete: found=${totalFound} saved=${totalSaved} skipped=${totalSkipped}`)
   return { found: totalFound, saved: totalSaved, skipped: totalSkipped }
 }
