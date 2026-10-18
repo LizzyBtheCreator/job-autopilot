@@ -1,4 +1,17 @@
-export type Category = 'sales' | 'govcon' | 'datacenter' | 'quickhire' | 'compliance' | 'temp'
+export type Category =
+  | 'sales'
+  | 'govcon'
+  | 'datacenter'
+  | 'quickhire'
+  | 'compliance'
+  | 'temp'
+  | 'proposals'
+  | 'contracts'
+  | 'grants'
+  | 'program_ops'
+  | 'govcon_public'
+  | 'business_dev'
+  | 'consulting'
 
 export type JobStatus =
   | 'pending_review'
@@ -110,7 +123,7 @@ export interface Application {
   fractional_brochure: string | null
   status: ApplicationStatus
   form_filled_at: string | null
-  submitted_at: string | null
+  applied_at: string | null
   interview_date: string | null
   thank_you_sent_at: string | null
   notes: string | null

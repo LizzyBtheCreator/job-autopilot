@@ -49,7 +49,7 @@ export default function Dashboard() {
       supabase.from('master_profile').select('*').single(),
       supabase.from('daily_stats').select('*').order('date', { ascending: false }).limit(7),
       supabase.from('discovered_jobs').select('*').order('discovered_at', { ascending: false }).limit(10),
-      supabase.from('discovered_jobs').select('*').eq('status', 'pending_review').order('fit_score', { ascending: false }),
+      supabase.from('discovered_jobs').select('*').eq('status', 'new').order('fit_score', { ascending: false }),
     ])
     setProfile(profileRes.data as MasterProfile | null)
     setStats((statsRes.data ?? []) as DailyStats[])
