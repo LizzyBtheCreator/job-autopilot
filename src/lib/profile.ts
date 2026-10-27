@@ -9,7 +9,8 @@ export const CONTACT = {
   email: "elimcmillan@myyahoo.com",
 };
 
-// Reverse chronological. This order is locked: roles may be left out, never reordered.
+// Reverse chronological: current ("to Present") roles first, newest start first, then past roles by
+// end date. This order is locked: roles may be left out, never reordered.
 // selfOwned roles are her own businesses. On the resume their title is rewritten to a functional
 // title for the work she did there (never Founder/Owner). Roles at other employers keep their real title,
 // because employers verify those.
@@ -45,6 +46,22 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
       "Defined product vision, go-to-market strategy, pricing model, and subscription structure for a SaaS platform serving the govcon market",
       "Built the platform full stack with Next.js, Supabase, Stripe, and the Anthropic API, and designed its product architecture and user experience",
       "Translated 18 years of hands-on federal BD and proposal experience into a scalable product, demonstrating the ability to identify market gaps, build AI-powered solutions, and deliver them to production",
+    ],
+  },
+  {
+    key: "Precise Consulting Services",
+    heading: "Precise Consulting Services - Principal Consultant (Remote) | 2006 to Present",
+    selfOwned: true,
+    bullets: [
+      "Personally secured $3.5M+ in federal funding and advised on $4.85M+ in housing development activity across HUD, CDBG, HOME, LIHTC, CDFI, HUD-VASH, and Grants Per Diem programs",
+      "Administered CDBG grants across the full program lifecycle: procurement, environmental review (24 CFR Part 58), Davis-Bacon, HUD/IDIS reporting, single audit (2 CFR Part 200 Subpart F), and grant closeout",
+      "Provided HUD funding navigation and grant advisory services to 12 clients, with engagements of $300K to $2M each",
+      "Directly served 100+ veterans across NC, SC, and GA (2014 to 2022), advising on housing placement, group home development ($450K construction), and new residential development (about $900K)",
+      "Managed full grant lifecycle across HUD, CDBG, HOME, LIHTC, CDFI, HUD-VASH, and Grants Per Diem programs including procurement, compliance, reporting, audit preparation, and closeout",
+      "Provided federal compliance advisory across 2 CFR Part 200, FAR, EDGAR, Davis-Bacon, environmental review (24 CFR Part 58), and SAM.gov navigation with zero audit findings across 100+ client engagements",
+      "Wrote and developed winning federal proposals and grant applications across defense, civilian, and housing program areas",
+      "Delivered government contracting compliance training and technical assistance to organizations across NC, SC, and GA",
+      "Directed community development program serving 200+ at-risk youth and families annually over 8 years",
     ],
   },
   {
@@ -93,19 +110,14 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
     ],
   },
   {
-    key: "Precise Consulting Services",
-    heading: "Precise Consulting Services - Principal Consultant (Remote) | 2006 to Present",
+    key: "Found Crisis Services",
+    heading: "Found Crisis Services - Founder and Director | Fayetteville, NC | 2010 to 2018",
     selfOwned: true,
     bullets: [
-      "Personally secured $3.5M+ in federal funding and advised on $4.85M+ in housing development activity across HUD, CDBG, HOME, LIHTC, CDFI, HUD-VASH, and Grants Per Diem programs",
-      "Administered CDBG grants across the full program lifecycle: procurement, environmental review (24 CFR Part 58), Davis-Bacon, HUD/IDIS reporting, single audit (2 CFR Part 200 Subpart F), and grant closeout",
-      "Provided HUD funding navigation and grant advisory services to 12 clients, with engagements of $300K to $2M each",
-      "Directly served 100+ veterans across NC, SC, and GA (2014 to 2022), advising on housing placement, group home development ($450K construction), and new residential development (about $900K)",
-      "Managed full grant lifecycle across HUD, CDBG, HOME, LIHTC, CDFI, HUD-VASH, and Grants Per Diem programs including procurement, compliance, reporting, audit preparation, and closeout",
-      "Provided federal compliance advisory across 2 CFR Part 200, FAR, EDGAR, Davis-Bacon, environmental review (24 CFR Part 58), and SAM.gov navigation with zero audit findings across 100+ client engagements",
-      "Wrote and developed winning federal proposals and grant applications across defense, civilian, and housing program areas",
-      "Delivered government contracting compliance training and technical assistance to organizations across NC, SC, and GA",
-      "Directed community development program serving 200+ at-risk youth and families annually over 8 years",
+      "Directed a crisis intervention and community support organization serving underserved populations",
+      "Designed and implemented community-based programs using trauma-informed, strengths-based service delivery",
+      "Served 200+ underprivileged youth and families annually over 8 years",
+      "Coordinated community partnerships, stakeholder engagement, and public sector collaboration",
     ],
   },
   {
@@ -117,17 +129,6 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
       "Conducted credit analysis including financial statement review, cash flow analysis, and creditworthiness assessment",
       "Managed loan portfolio advisory and supported clients in structuring financing arrangements",
       "Maintained client financial records, prepared federal and state tax filings, and provided financial planning guidance",
-    ],
-  },
-  {
-    key: "Found Crisis Services",
-    heading: "Found Crisis Services - Founder and Director | Fayetteville, NC | 2010 to 2018",
-    selfOwned: true,
-    bullets: [
-      "Directed a crisis intervention and community support organization serving underserved populations",
-      "Designed and implemented community-based programs using trauma-informed, strengths-based service delivery",
-      "Served 200+ underprivileged youth and families annually over 8 years",
-      "Coordinated community partnerships, stakeholder engagement, and public sector collaboration",
     ],
   },
 ];
@@ -150,7 +151,7 @@ Government Contracting and Compliance: Capture management, proposal management (
 
 IT and Technical: Syxsense (endpoint security, patch management, automation), cloud platform administration, CRM administration, technical client support, remote troubleshooting, IT project coordination, Next.js, Supabase, Stripe integration, Anthropic API
 
-HR and People Operations: employee relations, regulatory compliance across NC, SC, and GA, training and development, performance management, onboarding and offboarding, HR policy development, stakeholder management, organizational development, confidential matter handling
+HR and People Operations: employee relations, compensation, investigations and discipline, workforce planning, succession planning, DEI programs, regulatory compliance across NC, SC, and GA, training and development, performance management, onboarding and offboarding, HR policy development, stakeholder management, organizational development, confidential matter handling
 
 Program and Project Management: PMP-certified project management, building, training, and leading cross-functional GovCon and sales teams of 30+, program design and implementation, stakeholder engagement, training design and delivery, community development program design, operational efficiency improvement (35%)
 
@@ -195,6 +196,11 @@ export const ADDITIONAL_EXPERIENCE: string[] = [
   "Found Crisis Services: administered the full HR lifecycle, including payroll processing (Gusto, ADP, QuickBooks, Wave), benefits administration, performance management, and offboarding",
   "Found Crisis Services: ran people operations, including hiring, onboarding and offboarding, performance management, HR policies and procedures, and workplace culture",
   "Found Crisis Services: handled sensitive and confidential staff and client matters with discretion, using trauma-informed, strengths-based practices",
+  "Found Crisis Services: set staff compensation, including pay rates and raises",
+  "Found Crisis Services: investigated staff complaints and handled discipline, including written warnings and terminations",
+  "Found Crisis Services: led workforce planning, deciding staffing and volunteer levels and budgeting for them",
+  "Found Crisis Services: built inclusion programs and practices (DEI) for staff and volunteers",
+  "Found Crisis Services: ran succession planning, training staff to take over key roles",
   "Precise Consulting Services: designed and delivered compliance training and technical assistance for client organizations across NC, SC, and GA (training and development)",
   "Precise Consulting Services: applied Davis-Bacon labor standards and federal compliance requirements for client organizations in three states (NC, SC, GA)",
   "Defense Comply and Federal Contracting Solutions: partnered with IT, Legal, contracts, and executive leaders to meet deadlines and resolve issues",
