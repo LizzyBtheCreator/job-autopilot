@@ -7,7 +7,9 @@ export type Category =
   | "business_dev"
   | "consulting"
   | "public_sector"
-  | "dei_hr";
+  | "dei_hr"
+  | "it"
+  | "solutions";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   proposals: "Proposals & Capture",
@@ -19,6 +21,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   consulting: "Consulting",
   public_sector: "Government / Public Sector",
   dei_hr: "DEI / HR Compliance",
+  it: "Information Technology",
+  solutions: "Solutions / Customer Success",
 };
 
 export type JobStatus = "new" | "generating" | "needs_review" | "ready" | "applied" | "dismissed" | "error";
