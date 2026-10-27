@@ -16,25 +16,16 @@ export const CONTACT = {
 // because employers verify those.
 export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; bullets: string[] }[] = [
   {
-    key: "Defense Comply Pro",
-    heading: "Defense Comply Pro - Founder (Remote) | 2025 to Present",
-    selfOwned: true,
-    bullets: [
-      "Building a compliance intelligence SaaS platform under Defense Compliance Solutions for defense contractors and federal cloud vendors pursuing CMMC, FedRAMP, and FISMA authorization",
-      "Platform replaces the traditional $15,000-$50,000 consultant-led assessment with AI-powered control gap analysis, automated policy generation, POA&M management, evidence tracking, live SPRS scoring, and assessor-ready documentation export",
-      "Designed subcontractor flow-down management, contract/RFP compliance scanning, and a managed services concierge module that connects clients to compliance experts for hands-on program execution",
-      "Translated 18 years of federal compliance program management experience into a scalable SaaS platform serving the 300,000+ CMMC-obligated contractor market",
-    ],
-  },
-  {
     key: "Defense Comply",
     heading: "Defense Comply - Founder and Principal Compliance Advisor (Remote) | 2024 to Present",
     selfOwned: true,
     bullets: [
-      "Advise small and mid-size defense contractors pursuing CMMC certification and DoD contract eligibility",
+      "Advise small and mid-size defense contractors pursuing CMMC certification and DoD contract eligibility, including a compliance engagement valued at $20K per month ($240K annually)",
       "Lead clients through full compliance program lifecycle including NIST SP 800-171 Rev. 3 gap assessments, System Security Plan (SSP) and POA&M documentation, evidence pack development, and SPRS scoring",
       "Translate complex regulatory requirements including CMMC, NIST 800-171, and DFARS flow-down obligations into actionable remediation roadmaps and 30-day implementation plans",
       "Coordinate alignment across client IT, Legal, contracts, and executive stakeholders to drive compliance milestones against procurement and contractual deadlines",
+      "Built a compliance intelligence SaaS platform (Defense Comply Pro) for defense contractors and federal cloud vendors pursuing CMMC, FedRAMP, and FISMA authorization, replacing the traditional $15,000-$50,000 consultant-led assessment with AI-powered control gap analysis, automated policy generation, POA&M management, evidence tracking, live SPRS scoring, and assessor-ready documentation export",
+      "Designed subcontractor flow-down management, contract/RFP compliance scanning, and a managed services module that connects clients to compliance experts for hands-on program execution, serving the 300,000+ CMMC-obligated contractor market",
     ],
   },
   {
@@ -165,7 +156,7 @@ export const CATEGORY_FOCUS: Record<Category, string> = {
   contracts:
     "CONTRACTS, CONTRACT ADMINISTRATION, or PROCUREMENT role. Lead with: FAR/DFARS compliance, cost/price proposals across FFP, CPFF, T&M, and fixed-price contract types, 100+ client engagements with zero audit findings, SBA 8(a)/IDIQ/GWAC/OTA/BAA vehicles, teaming agreements and subcontractor flow-downs, SAM.gov navigation. Anchor roles are Federal Contracting Solutions and Precise Consulting Services.",
   compliance:
-    "COMPLIANCE or GRC role. Lead with compliance program management and regulatory framework expertise. Primary roles: Defense Comply Pro (CMMC/FedRAMP/FISMA SaaS), Defense Comply (active CMMC/NIST 800-171 advisory), Precise Consulting Services (federal compliance, zero audit findings across 100+ engagements), Federal Contracting Solutions (FAR/DFARS). Key frameworks: CMMC, NIST 800-171, FedRAMP, FISMA, FAR/DFARS, 2 CFR Part 200. Key skills: POA&M management, SSP documentation, SPRS scoring, audit readiness. Never lead with BD or sales metrics.",
+    "COMPLIANCE or GRC role. Lead with compliance program management and regulatory framework expertise. Primary roles: Defense Comply (active CMMC/NIST 800-171 advisory, including a $20K/month engagement, and its CMMC/FedRAMP/FISMA SaaS platform), Precise Consulting Services (federal compliance, zero audit findings across 100+ engagements), Federal Contracting Solutions (FAR/DFARS). Key frameworks: CMMC, NIST 800-171, FedRAMP, FISMA, FAR/DFARS, 2 CFR Part 200. Key skills: POA&M management, SSP documentation, SPRS scoring, audit readiness. Never lead with BD or sales metrics.",
   grants:
     "GRANTS MANAGEMENT role. Lead with: $3.5M+ in federal funding personally secured, $4.85M+ in housing development advised, 12 HUD funding clients ($300K to $2M each), full grant lifecycle (HUD, CDBG, HOME, LIHTC, CDFI, HUD-VASH, Grants Per Diem), 2 CFR Part 200 (Uniform Guidance), EDGAR, Davis-Bacon, single audit preparation, HUD/IDIS reporting, zero audit findings across 100+ client engagements. Anchor role is Precise Consulting Services.",
   program_ops:
