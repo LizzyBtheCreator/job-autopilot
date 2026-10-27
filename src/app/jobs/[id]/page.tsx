@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { currentUserEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { resumeFileName } from "@/lib/filename";
-import { buildChatPrompt, fetchPosting, postingFlags } from "@/lib/resume";
+import { buildChatPrompt, companyFromPosting, fetchPosting, postingFlags } from "@/lib/resume";
 import { loadSettings } from "@/lib/search";
 import { CATEGORY_LABELS, type Job } from "@/lib/types";
 import { CopyForClaude, ResumeEditor, StatusButton } from "@/components/actions";
@@ -26,6 +26,12 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
     job.description = posting || null;
     job.flags = postingFlags(job, posting, settings);
     await supabase.from("jobs").update({ description: job.description, flags: job.flags }).eq("id", id);
+  }
+  // Search results often only show the job site's name; the posting has the real employer.
+  const company = companyFromPosting(job.description);
+  if (company && company !== job.company) {
+    job.company = company;
+    await supabase.from("jobs").update({ company }).eq("id", id);
   }
   const prompt = buildChatPrompt(job, job.description ?? `${job.title}\n${job.snippet ?? ""}`);
 

@@ -43,7 +43,7 @@ function jsonLdPosting(html: string): string | null {
           const parts = [
             typeof it.title === "string" ? `Title: ${it.title}` : "",
             it.hiringOrganization && typeof (it.hiringOrganization as Record<string, unknown>).name === "string"
-              ? `Company: ${(it.hiringOrganization as Record<string, unknown>).name}`
+              ? `Company: ${decodeEntities(String((it.hiringOrganization as Record<string, unknown>).name))}`
               : "",
             it.jobLocationType ? `Location type: ${String(it.jobLocationType)}` : "",
             it.baseSalary ? `Salary: ${JSON.stringify(it.baseSalary)}` : "",
@@ -57,6 +57,15 @@ function jsonLdPosting(html: string): string | null {
     }
   }
   return null;
+}
+
+// The employer name a job site publishes with the posting, e.g. "Brown & Brown, Inc".
+// Workday prefixes it with an entity number ("001 Brown & Brown, Inc"), which is dropped.
+export function companyFromPosting(posting: string | null): string | null {
+  const m = posting?.match(/^Company: (.+)$/m);
+  if (!m) return null;
+  const name = decodeEntities(m[1]).replace(/^\d+\s+/, "").trim();
+  return name || null;
 }
 
 export async function fetchPosting(url: string): Promise<string> {
@@ -133,6 +142,8 @@ RULES (follow every one):
 15. Scale: leave out details that make my work sound small, such as small budgets.
 16. Do not claim knowledge of specific state laws or "multi-state employment law" unless my history says so. My NC, SC, and GA work was compliance training and technical assistance.
 17. Individual results: my dollar figures, win rates, and client results come from my own work, not team or company totals. Where it strengthens the bullet, make that clear with honest wording such as "personally captured", "personally secured", or "as lead proposal writer". Do not use it on bullets about teams I built or led.
+18. Years of experience: only attach years to a field when my history supports that many years in it. 18+ years is my total professional experience; my people operations and HR work was 2010 to 2018 at Found Crisis Services. Do not write, for example, "18+ years of HR leadership".
+19. No repeats: each fact appears once on the resume. Do not restate the same duty or number in two bullets of the same role.
 
 OUTPUT:
 1. Show the resume as text in exactly this structure:
@@ -150,7 +161,9 @@ ${CONTACT.location} | ${CONTACT.phone} | ${CONTACT.email}
 ## EDUCATION
 - ${EDUCATION_LINE}
 
-2. Then create a Word document (.docx) named "${file}.docx" with the same resume, formatted for ATS: one column, standard section headings, simple bullets, no tables, text boxes, images, or headers and footers, and a clean professional font.`;
+2. Then create a Word document (.docx) named "${file}.docx" with the same resume, formatted for ATS: one column, standard section headings, simple bullets, no tables, text boxes, images, or headers and footers, and a clean professional font.
+
+3. After the file, add a short note: which roles and certifications you left out and why, and any posting requirements I don't clearly meet, so I can prepare for them in an interview.`;
 }
 
 const OWNER_WORDS = /\b(founder|co-founder|founded|owner|owner\/operator|proprietor|self-employed|my firm|my practice|my company)\b/i;
