@@ -193,6 +193,9 @@ RULES:
 11. Leave out roles that do not help for this job, but keep the ones you include in the numbered order above. Never reorder them.
 12. Education: exactly the one line given in the format below, nothing else. No references, no salary, no personal notes, no trial or engagement offers.
 13. Length: 1 to 1.5 pages.
+14. Field language: if the posting is not about government contracting, grants, or federal compliance, do not cite federal regulations or programs by name or code (FAR, DFARS, EDGAR, 2 CFR Part 200, 24 CFR Part 58, Davis-Bacon, CMMC, NIST, HUD, CDBG, HOME, LIHTC, SAM.gov) unless the posting names them. Describe that work in the posting's own field terms (compliance, audits, documentation, policy, training) or leave it out.
+15. Scale: leave out details that make her work sound small, such as small budgets.
+16. Do not claim knowledge of specific state laws or "multi-state employment law" unless her history says so. Her NC, SC, and GA work was compliance training and technical assistance.
 
 OUTPUT FORMAT (plain text, exactly this structure, nothing before or after):
 # ${CONTACT.name}

@@ -119,7 +119,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
     bullets: [
       "Directed a crisis intervention and community support organization serving underserved populations",
       "Designed and implemented community-based programs using trauma-informed, strengths-based service delivery",
-      "Served 200+ underprivileged youth and families annually over 8 years on a lean operating budget under $1,000/month",
+      "Served 200+ underprivileged youth and families annually over 8 years",
       "Coordinated community partnerships, stakeholder engagement, and public sector collaboration",
     ],
   },
@@ -143,7 +143,7 @@ Government Contracting and Compliance: Capture management, proposal management (
 
 IT and Technical: Syxsense (endpoint security, patch management, automation), cloud platform administration, CRM administration, technical client support, remote troubleshooting, IT project coordination, Next.js, Supabase, Stripe integration, Anthropic API
 
-HR and People Operations: employee relations, multi-state compliance, training and development, performance management, onboarding and offboarding, HR policy development, stakeholder management, organizational development, confidential matter handling
+HR and People Operations: employee relations, regulatory compliance across NC, SC, and GA, training and development, performance management, onboarding and offboarding, HR policy development, stakeholder management, organizational development, confidential matter handling
 
 Program and Project Management: PMP-certified project management, cross-functional team leadership (100+, in-house and teaming partners), program design and implementation, stakeholder engagement, training design and delivery, community development program design, operational efficiency improvement (35%)
 
@@ -167,7 +167,7 @@ export const CATEGORY_FOCUS: Record<Category, string> = {
   public_sector:
     "PUBLIC SECTOR / COMMUNITY, ECONOMIC, or WORKFORCE DEVELOPMENT role. Lead with: community development program leadership (200+ youth and families served annually over 8 years), $325M+ federal funding for housing, education, and community development, CDBG/HOME/LIHTC program lifecycle, technical assistance across NC, SC, and GA, stakeholder engagement. Anchor roles are Precise Consulting Services and Found Crisis Services.",
   dei_hr:
-    "PEOPLE OPERATIONS, HR, DEI, HR COMPLIANCE, or EMPLOYEE RELATIONS role. Frame her as an HR and people operations professional: employment and labor law compliance (Davis-Bacon labor standards, federal and multi-state requirements), policy and procedure development, audit support and complete, accurate documentation, training and coaching managers and staff, stakeholder and leadership partnership, program design, and any HR experience in her additional experience notes. Lead with: 18+ years of compliance program management, community and workforce program design (200+ families and youth served annually), technical assistance to diverse organizations across NC, SC, and GA, federal regulatory compliance (2 CFR Part 200, FAR, Davis-Bacon, EDGAR), zero audit findings across 100+ engagements, training design and delivery. Anchor roles are Precise Consulting Services and Found Crisis Services. Never lead with BD or sales metrics. Never mention WBE/MBE/SBE designations.",
+    "PEOPLE OPERATIONS, HR, DEI, HR COMPLIANCE, or EMPLOYEE RELATIONS role. Frame her as an HR and people operations professional. Lead with her HR lifecycle work at Found Crisis Services (recruiting, hiring, onboarding, supervising 100+ volunteers and staff, payroll, benefits, performance management, offboarding, confidential matters), then training and development delivered to organizations across NC, SC, and GA, partnering with leaders and stakeholders, policy and documentation, and audit readiness (zero audit findings across 100+ engagements). Describe compliance work in HR terms, not federal regulation codes. Anchor roles are Found Crisis Services and Precise Consulting Services. Never lead with BD or sales metrics. Never mention WBE/MBE/SBE designations.",
 };
 
 export function workHistoryText(): string {
@@ -184,7 +184,7 @@ export function workHistoryText(): string {
 export const ADDITIONAL_EXPERIENCE: string[] = [
   "Found Crisis Services (2010 to 2018): recruited, hired, onboarded, and supervised 100+ volunteers and staff",
   "Found Crisis Services: administered the full HR lifecycle, including payroll processing (Gusto, ADP, QuickBooks, Wave), benefits administration, performance management, and offboarding",
-  "Found Crisis Services, Precise Consulting Services, and Defense Comply: ran people operations for these organizations, including hiring, onboarding and offboarding, performance management, HR policies and procedures, and workplace culture",
+  "Found Crisis Services: ran people operations, including hiring, onboarding and offboarding, performance management, HR policies and procedures, and workplace culture",
   "Found Crisis Services: handled sensitive and confidential staff and client matters with discretion, using trauma-informed, strengths-based practices",
   "Precise Consulting Services: designed and delivered compliance training and technical assistance for client organizations across NC, SC, and GA (training and development)",
   "Precise Consulting Services: applied Davis-Bacon labor standards and federal compliance requirements for client organizations in three states (NC, SC, GA)",
