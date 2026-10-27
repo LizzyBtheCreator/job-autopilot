@@ -3,7 +3,10 @@ import { db } from "./db";
 import { clearanceReason, notAJobReason, notRemoteReason, parseSalary, salaryReason } from "./filters";
 import type { DroppedResult, QueryStats, SearchQuery, Settings } from "./types";
 
-// Sites left out of every query. LinkedIn, Indeed and the other big aggregators block page
+// Searching these application sites returns one posting per result instead of job-board lists.
+const ATS_SITES = "(site:greenhouse.io OR site:lever.co OR site:ashbyhq.com OR site:myworkdayjobs.com OR site:apply.workable.com OR site:icims.com)";
+
+// Sites left out of open-web queries. LinkedIn, Indeed and the other big aggregators block page
 // fetching, so a tailored resume could not read the full posting.
 export const EXCLUDED_SITES = [
   "linkedin.com", "indeed.com", "glassdoor.com", "ziprecruiter.com", "monster.com",
@@ -33,14 +36,15 @@ async function serperCall(body: Record<string, unknown>): Promise<{ ok: true; ro
 }
 
 // Serper's free plan rejects some options ("Query pattern not allowed for free accounts").
-// Try the full request first, then step down to what the plan accepts, and say which one worked.
+// Try the most precise request first, then step down to what the plan accepts, and say which one worked.
 async function serper(query: string, exclusions: string, settings: Settings): Promise<{ rows: SerperResult[]; note: string | null }> {
-  const full: Record<string, unknown> = { q: `${query} ${exclusions}`, num: settings.results_per_query, gl: "us", hl: "en" };
-  if (settings.recency !== "any") full.tbs = `qdr:${settings.recency}`;
+  const precise: Record<string, unknown> = { q: `${query} ${ATS_SITES}`, num: settings.results_per_query, gl: "us", hl: "en" };
+  if (settings.recency !== "any") precise.tbs = `qdr:${settings.recency}`;
   const attempts: { body: Record<string, unknown>; note: string | null }[] = [
-    { body: full, note: null },
-    { body: { q: `${query} ${exclusions}`, num: 10 }, note: "Serper plan limit: ran without the date filter, 10 results" },
-    { body: { q: query, num: 10 }, note: "Serper plan limit: ran without the date filter or site exclusions, 10 results" },
+    { body: precise, note: null },
+    { body: { q: `${query} ${ATS_SITES}`, num: 10 }, note: "Serper plan limit: ran without the date filter, 10 results" },
+    { body: { q: `${query} ${exclusions}`, num: 10 }, note: "Serper plan limit: searched the open web instead of application sites" },
+    { body: { q: query, num: 10 }, note: "Serper plan limit: searched the open web with no site exclusions" },
   ];
   let last = "";
   for (const a of attempts) {

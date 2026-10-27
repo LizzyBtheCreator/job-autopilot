@@ -51,17 +51,52 @@ export function salaryReason(salaryMax: number | null, minSalary: number): strin
   return salaryMax < minSalary ? `Salary below $${minSalary.toLocaleString()} (top of range $${salaryMax.toLocaleString()})` : null;
 }
 
+// Applicant tracking systems where each URL is one posting.
+export const ATS_HOSTS = [
+  "greenhouse.io", "lever.co", "ashbyhq.com", "myworkdayjobs.com", "workable.com", "icims.com",
+  "smartrecruiters.com", "bamboohr.com", "applytojob.com", "breezy.hr", "recruitee.com", "paylocity.com",
+  "ultipro.com", "ukg.com", "adp.com", "taleo.net", "successfactors.com", "oraclecloud.com", "dayforcehcm.com",
+  "paycomonline.net", "jobvite.com", "rippling.com", "teamtailor.com", "pinpointhq.com", "usajobs.gov",
+];
+
+const LIST_WORDS = /\b(jobs|careers|openings|positions|vacancies|opportunities|job board|job listings|short list|hiring now|now hiring)\b/i;
+const POSTING_PARENT = /^(job|jobs|careers?|positions?|openings?|opportunit(y|ies)|vacanc(y|ies)|listings?|roles?|postings?|offer|o|j|requisitions?|details?|apply)$/;
+const ID_PARAM = /^(gh_jid|jobid|job_id|jid|reqid|req_id|requisitionid|id|pid|postingid|jobreqid)$/i;
+
+function isAtsHost(host: string): boolean {
+  return ATS_HOSTS.some((h) => host === h || host.endsWith("." + h));
+}
+
+// A single posting has an ID in its address, lives on an applicant tracking system,
+// or ends in a long title slug under a jobs folder. Board and category pages have none of these.
+function looksLikeSinglePosting(u: URL): boolean {
+  const host = u.hostname.toLowerCase().replace(/^www\./, "");
+  const segs = u.pathname.toLowerCase().split("/").filter(Boolean);
+  if (isAtsHost(host)) return segs.length >= 2 || [...u.searchParams.keys()].some((k) => ID_PARAM.test(k));
+  if ([...u.searchParams.keys()].some((k) => ID_PARAM.test(k))) return true;
+  if (segs.some((seg) => /\d{4,}|[0-9a-f]{8,}/.test(seg))) return true;
+  for (let i = 1; i < segs.length; i++) {
+    if (POSTING_PARENT.test(segs[i - 1]) && segs[i].split("-").length >= 4) return true;
+  }
+  return false;
+}
+
 // Results that are not a single job posting.
 export function notAJobReason(url: string, title: string): string | null {
-  let path = "";
+  let u: URL;
   try {
-    path = new URL(url).pathname.toLowerCase();
+    u = new URL(url);
   } catch {
     return "Invalid URL";
   }
+  const path = u.pathname.toLowerCase();
   if (/^\/(jobs|careers|career|openings|positions)?\/?$/.test(path)) return "Careers home page, not a single posting";
-  if (/\b(\d[\d,]*\+?\s+(jobs|openings|positions)|jobs? (in|near) |salary|salaries|how to become|what is a)\b/i.test(title))
+  if (/\b(\d[\d,]*\+?\s+(\w+\s+){0,4}(jobs|openings|positions)|jobs? (in|near) |salary|salaries|how to become|what is a)\b/i.test(title))
     return "Search results or article, not a single posting";
   if (/\/(search|salary|salaries|career-advice|blog)\b/.test(path)) return "Search results or article, not a single posting";
+  // Only the part of the title before "|" or " - " names the page; site names often say "Careers".
+  const lead = title.split(/\s+[|\-–]\s+/)[0];
+  if (LIST_WORDS.test(lead)) return "Job board or list of jobs, not a single posting";
+  if (!looksLikeSinglePosting(u)) return "Job board or list of jobs, not a single posting";
   return null;
 }

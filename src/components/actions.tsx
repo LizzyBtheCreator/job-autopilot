@@ -179,3 +179,30 @@ export function PrintButton() {
     </button>
   );
 }
+
+export function ClearNewButton({ count }: { count: number }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
+  if (!count) return null;
+  return (
+    <button
+      className="btn-secondary"
+      disabled={busy}
+      onClick={async () => {
+        if (!armed) {
+          setArmed(true);
+          return;
+        }
+        setBusy(true);
+        const err = await call("/api/jobs/clear-new", { method: "POST" });
+        if (err) alert(err);
+        setBusy(false);
+        setArmed(false);
+        router.refresh();
+      }}
+    >
+      {armed ? `Click again to remove all ${count} New jobs` : "Clear New list"}
+    </button>
+  );
+}

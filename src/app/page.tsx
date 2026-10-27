@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUserEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CATEGORY_LABELS, STATUS_LABELS, type Job, type JobStatus, type SearchRun } from "@/lib/types";
-import { GenerateAllButton, GenerateButton, SearchButton, StatusButton } from "@/components/actions";
+import { ClearNewButton, GenerateAllButton, GenerateButton, SearchButton, StatusButton } from "@/components/actions";
 import { Flags, StatusBadge } from "@/components/badges";
 
 export const dynamic = "force-dynamic";
@@ -130,7 +130,12 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           ))}
         </div>
 
-        {status === "new" && <GenerateAllButton ids={jobs.filter((j) => j.status === "new").map((j) => j.id)} />}
+        {status === "new" && (
+          <div className="flex flex-wrap gap-2">
+            <GenerateAllButton ids={jobs.filter((j) => j.status === "new").map((j) => j.id)} />
+            <ClearNewButton count={jobs.filter((j) => j.status === "new" && !j.resume).length} />
+          </div>
+        )}
 
         {jobs.length === 0 ? (
           <p className="text-sm text-stone-500">Nothing here.</p>

@@ -22,8 +22,10 @@ export default async function SettingsPage() {
       <section className="space-y-2">
         <h2 className="font-semibold">Search queries</h2>
         <p className="text-sm text-stone-500">
-          Each query runs on Google through Serper. These sites are always left out because the app can&apos;t read their
-          postings: {EXCLUDED_SITES.join(", ")}.
+          Each query runs on Google through Serper, limited to employer application sites (Greenhouse, Lever, Ashby,
+          Workday, Workable, iCIMS) so every result is a single posting. If your Serper plan does not allow that, it
+          searches the open web instead and leaves out these sites, whose postings the app can&apos;t read:{" "}
+          {EXCLUDED_SITES.join(", ")}.
         </p>
         <QueriesEditor queries={(data ?? []) as SearchQuery[]} />
       </section>
