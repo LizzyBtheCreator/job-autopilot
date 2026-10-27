@@ -1,153 +1,94 @@
--- ============================================================
--- JOB AUTOPILOT — DATABASE SCHEMA
--- ============================================================
+-- Job Autopilot v3 schema.
+-- Paste this whole file into Supabase > SQL Editor > New query > Run.
+-- Safe to run more than once. It does not touch any tables from the old version.
 
--- Master profile (one row = Elizabeth)
-create table if not exists master_profile (
+create extension if not exists pgcrypto;
+
+-- One row of app-wide settings.
+create table if not exists app_settings (
+  id int primary key default 1 check (id = 1),
+  review_required boolean not null default true,
+  min_salary int not null default 80000,
+  recency text not null default 'm' check (recency in ('d', 'w', 'm', 'y', 'any')),
+  results_per_query int not null default 20 check (results_per_query between 10 and 100),
+  updated_at timestamptz not null default now()
+);
+insert into app_settings (id) values (1) on conflict (id) do nothing;
+
+-- The search queries, stored as data so they can be edited from the Settings page.
+create table if not exists search_queries (
   id uuid primary key default gen_random_uuid(),
-  full_name text not null default 'Elizabeth H. McMillan',
-  email text not null default 'elimcmillan@myyahoo.com',
-  phone text not null default '(910) 479-4839',
-  location text not null default 'Fayetteville, NC',
-  cover_letter_tone text not null default 'conversational-direct',
-  salary_min integer not null default 60000,
-  remote_only boolean not null default true,
-  no_commission_only boolean not null default true,
-  daily_target integer not null default 50,
-  daily_target_production integer not null default 100,
-  is_testing_phase boolean not null default true,
-  category_floor integer not null default 5,
-  category_cap_pct integer not null default 60,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  sort_order int not null default 0,
+  label text not null,
+  category text not null,
+  query text not null,
+  enabled boolean not null default true,
+  created_at timestamptz not null default now()
 );
 
--- Profile sections (one row per job category)
-create table if not exists profile_sections (
+insert into search_queries (sort_order, label, category, query)
+select * from (values
+  (1,  'Proposals & Capture 1', 'proposals',     '"proposal manager" OR "capture manager" OR "proposal director" OR "bid manager" remote job'),
+  (2,  'Proposals & Capture 2', 'proposals',     '"senior capture manager" OR "director of capture" OR "VP proposals" remote federal job'),
+  (3,  'Contracts & Procurement', 'contracts',   '"contracts manager" OR "contract administrator" OR "contract specialist" OR "procurement manager" remote job'),
+  (4,  'Compliance', 'compliance',               '"compliance manager" OR "compliance director" OR "compliance program manager" remote job'),
+  (5,  'Grants', 'grants',                       '"grants manager" OR "grants administrator" OR "grant compliance" OR "federal grants manager" remote job'),
+  (6,  'Program Management', 'program_ops',      '"program manager" OR "program director" OR "PMO director" remote federal government job'),
+  (7,  'Business Development', 'business_dev',   '"business development director" OR "VP of business development" OR "director of business development" remote job'),
+  (8,  'Consulting', 'consulting',               '"senior consultant" OR "principal consultant" OR "managing consultant" remote federal job'),
+  (9,  'Government / Public Sector', 'public_sector', '"community development director" OR "economic development director" OR "workforce development director" remote job'),
+  (10, 'DEI / HR Compliance 1', 'dei_hr',        '"chief diversity officer" OR "VP of DEI" OR "director of DEI" OR "director of diversity" OR "chief people officer" remote job'),
+  (11, 'DEI / HR Compliance 2', 'dei_hr',        '"DEI manager" OR "diversity equity inclusion manager" OR "HR compliance manager" OR "employee relations manager" OR "EEO officer" remote job'),
+  (12, 'DEI / HR Compliance 3', 'dei_hr',        '"people operations" OR "VP HR compliance" OR "director employee relations" OR "labor compliance manager" remote job')
+) as v(sort_order, label, category, query)
+where not exists (select 1 from search_queries);
+
+-- Every search run, with per-query counts and every dropped result and its reason.
+create table if not exists search_runs (
   id uuid primary key default gen_random_uuid(),
-  profile_id uuid references master_profile(id) on delete cascade,
-  category text not null check (category in ('sales', 'govcon', 'datacenter')),
-  summary text,
-  skills text[] default '{}',
-  keywords text[] default '{}',
-  target_roles text[] default '{}',
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique(profile_id, category)
+  started_at timestamptz not null default now(),
+  finished_at timestamptz,
+  total_returned int not null default 0,
+  total_new int not null default 0,
+  total_seen_before int not null default 0,
+  total_dropped int not null default 0,
+  per_query jsonb not null default '[]'::jsonb,
+  dropped jsonb not null default '[]'::jsonb,
+  error text
 );
 
--- Work history entries
-create table if not exists work_history (
+-- Jobs that passed the filters.
+create table if not exists jobs (
   id uuid primary key default gen_random_uuid(),
-  profile_id uuid references master_profile(id) on delete cascade,
-  company text not null,
-  title text not null,
-  start_date text,
-  end_date text,
-  is_current boolean default false,
-  is_remote boolean default false,
-  location text,
-  bullets text[] default '{}',
-  categories text[] default '{}',
-  sort_order integer default 0,
-  created_at timestamptz default now()
-);
-
--- Certifications
-create table if not exists certifications (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid references master_profile(id) on delete cascade,
-  name text not null,
-  issuer text,
-  year text,
-  in_progress boolean default false
-);
-
--- Education
-create table if not exists education (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid references master_profile(id) on delete cascade,
-  institution text not null,
-  degree text,
-  field text,
-  year text,
-  in_progress boolean default false
-);
-
--- Discovered jobs (raw from web search)
-create table if not exists discovered_jobs (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  company text not null,
   url text not null unique,
+  title text not null,
+  company text,
+  snippet text,
+  category text not null,
+  query_label text,
+  salary_text text,
+  salary_min int,
+  salary_max int,
+  status text not null default 'new'
+    check (status in ('new', 'generating', 'needs_review', 'ready', 'applied', 'dismissed', 'error')),
+  flags text[] not null default '{}',
   description text,
-  category text check (category in ('sales', 'govcon', 'datacenter')),
-  role_type text,
-  is_remote boolean,
-  salary_min integer,
-  salary_max integer,
-  salary_raw text,
-  is_commission_only boolean default false,
-  fit_score integer default 0,
-  fit_notes text,
-  status text not null default 'pending_review' check (status in (
-    'pending_review', 'approved', 'rejected', 'applying', 'applied', 'archived'
-  )),
-  application_form_type text,
-  discovered_at timestamptz default now(),
-  reviewed_at timestamptz,
-  applied_at timestamptz
+  requirements jsonb,
+  resume text,
+  error text,
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  last_run_id uuid references search_runs(id) on delete set null,
+  generated_at timestamptz,
+  applied_at timestamptz,
+  updated_at timestamptz not null default now()
 );
+create index if not exists jobs_status_idx on jobs (status);
+create index if not exists jobs_last_seen_idx on jobs (last_seen_at desc);
 
--- Applications
-create table if not exists applications (
-  id uuid primary key default gen_random_uuid(),
-  job_id uuid references discovered_jobs(id) on delete cascade,
-  resume_text text,
-  cover_letter text,
-  status text not null default 'draft' check (status in (
-    'draft', 'ready', 'filled', 'submitted', 'rejected', 'interviewing', 'offer', 'closed', 'unavailable'
-  )),
-  form_filled_at timestamptz,
-  submitted_at timestamptz,
-  notes text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
--- Daily stats
-create table if not exists daily_stats (
-  id uuid primary key default gen_random_uuid(),
-  date date not null unique default current_date,
-  discovered integer default 0,
-  approved integer default 0,
-  rejected integer default 0,
-  applied integer default 0,
-  sales_applied integer default 0,
-  govcon_applied integer default 0,
-  datacenter_applied integer default 0,
-  target integer default 50
-);
-
--- Auto-update updated_at
-create or replace function update_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
-
-create trigger master_profile_updated_at before update on master_profile
-  for each row execute function update_updated_at();
-create trigger profile_sections_updated_at before update on profile_sections
-  for each row execute function update_updated_at();
-create trigger applications_updated_at before update on applications
-  for each row execute function update_updated_at();
-
--- Indexes
-create index if not exists idx_jobs_status on discovered_jobs(status);
-create index if not exists idx_jobs_category on discovered_jobs(category);
-create index if not exists idx_jobs_discovered_at on discovered_jobs(discovered_at desc);
-create index if not exists idx_applications_job on applications(job_id);
-create index if not exists idx_daily_stats_date on daily_stats(date desc);
+-- Lock everything down. The app only reads and writes with the service role key
+-- on the server, after checking that you are signed in.
+alter table app_settings enable row level security;
+alter table search_queries enable row level security;
+alter table search_runs enable row level security;
+alter table jobs enable row level security;
