@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { clearanceReason, notRemoteReason, parseSalary, salaryReason } from "./filters";
-import { ADDITIONAL_EXPERIENCE, CATEGORY_FOCUS, CERTIFICATIONS, CONTACT, SKILLS, WORK_HISTORY, workHistoryText } from "./profile";
+import { ADDITIONAL_EXPERIENCE, CATEGORY_FOCUS, CERTIFICATIONS, CONTACT, EDUCATION_LINE, SKILLS, WORK_HISTORY, workHistoryText } from "./profile";
 import type { Job, Requirements, Settings } from "./types";
 
 const EXTRACT_MODEL = "claude-haiku-5-5";
@@ -191,7 +191,7 @@ RULES:
 9. The summary is 4 sentences at most. Its first sentence names the posting's role function and her strongest match to the employer's top 2 or 3 priorities. Pitch her at the posting's level, not above it.
 10. Core competencies: 9 to 12 short items using the posting's exact terms that her history or additional experience supports.
 11. Leave out roles that do not help for this job, but keep the ones you include in the numbered order above. Never reorder them.
-12. No education section, no references, no salary, no personal notes, no trial or engagement offers.
+12. Education: exactly the one line given in the format below, nothing else. No references, no salary, no personal notes, no trial or engagement offers.
 13. Length: 1 to 1.5 pages.
 
 OUTPUT FORMAT (plain text, exactly this structure, nothing before or after):
@@ -205,7 +205,9 @@ ${CONTACT.location} | ${CONTACT.phone} | ${CONTACT.email}
 ### (Company) - (Title per rules 3 and 4) (location as given) | (dates as given)
 - (bullet)
 ## CERTIFICATIONS
-- (certification)`;
+- (certification)
+## EDUCATION
+- ${EDUCATION_LINE}`;
 }
 
 const OWNER_WORDS = /\b(founder|co-founder|founded|owner|owner\/operator|proprietor|self-employed|my firm|my practice|my company)\b/i;
@@ -233,7 +235,6 @@ export function enforceRules(resume: string): { text: string; warnings: string[]
       break;
     }
   }
-  if (/^##\s*education/im.test(text)) warnings.push("Contains an education section");
   const owner = text.match(OWNER_WORDS);
   if (owner) warnings.push(`Mentions self-employment ("${owner[0]}")`);
   return { text, warnings };

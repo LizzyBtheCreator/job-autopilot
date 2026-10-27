@@ -48,7 +48,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
   },
   {
     key: "Federal Contracting Solutions",
-    heading: "Federal Contracting Solutions - Senior Business Development Consultant (Remote) | June 2021 to December 2024",
+    heading: "Federal Contracting Solutions - Senior Business Development Consultant (Contract/Consulting, Remote) | June 2021 to December 2024",
     selfOwned: false,
     bullets: [
       "Drove $320M+ in government contract activity with a sustained 72% win rate across DoD military departments (Army, Navy, Air Force, Space Force, SOCOM, CYBERCOM, DIA, DISA), HUD, HHS, and GSA",
@@ -63,7 +63,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
   },
   {
     key: "Syxsense",
-    heading: "Syxsense - Senior Business Development Specialist (Remote) | January 2022 to January 2024",
+    heading: "Syxsense - Senior Business Development Specialist (Contract/Consulting, Remote) | January 2022 to January 2024",
     selfOwned: false,
     bullets: [
       "Expanded presence in federal IT ecosystem; increased revenue from key accounts by 40% through consultative selling",
@@ -75,7 +75,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
   },
   {
     key: "GoHighLevel",
-    heading: "GoHighLevel - Business Development Specialist (Remote) | September 2019 to December 2023",
+    heading: "GoHighLevel - Business Development Specialist (Contract/Consulting, Remote) | September 2019 to December 2023",
     selfOwned: false,
     bullets: [
       "Closed $3M+ in recurring revenue through direct client acquisition and strategic partnerships",
@@ -100,7 +100,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
   },
   {
     key: "Tax and Financial Services Practice",
-    heading: "Tax and Financial Services Practice - Owner/Operator | Fayetteville, NC",
+    heading: "Tax and Financial Services Practice - Owner/Operator | Fayetteville, NC | 2012 to 2016",
     selfOwned: true,
     bullets: [
       "Delivered tax preparation and financial advisory services to individual and small business clients",
@@ -111,7 +111,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
   },
   {
     key: "Social Media Management Company",
-    heading: "Social Media Management Company - Owner/Founder (Remote)",
+    heading: "Social Media Management Company - Owner/Founder (Remote) | 2020 to 2022",
     selfOwned: true,
     bullets: [
       "Managed content strategy, paid advertising, and community management for client accounts",
@@ -122,7 +122,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
   },
   {
     key: "Found Crisis Services",
-    heading: "Found Crisis Services - Founder and Director | Fayetteville, NC",
+    heading: "Found Crisis Services - Founder and Director | Fayetteville, NC | 2010 to 2018",
     selfOwned: true,
     bullets: [
       "Directed a crisis intervention and community support organization serving underserved populations",
@@ -139,14 +139,11 @@ export const CERTIFICATIONS = [
   "Certified ScrumMaster (CSM)",
   "Google Data Analytics Certificate",
   "CompTIA A+ (in progress)",
+  "SHRM Certified Professional (SHRM-CP) (in progress)",
 ];
 
-// Kept for reference only. The resume rules say no education section.
-export const EDUCATION = [
-  "MS Information Technology - Western Governors University (in progress, 2027)",
-  "Fayetteville Technical Community College",
-  "Fayetteville State University",
-];
+// The one education line shown on every resume.
+export const EDUCATION_LINE = "MS Information Technology, Western Governors University (expected 2027)";
 
 export const SKILLS = `Sales and Business Development: CRM tools (Salesforce, HubSpot, GoHighLevel), consultative selling, pipeline management (200+ accounts), lead generation, SaaS sales, social media management and digital marketing, content creation and brand strategy, Facebook/Instagram paid advertising, community management, account management, quota attainment (120%), $3M+ in recurring revenue closed
 
@@ -158,7 +155,7 @@ HR and People Operations: employee relations, multi-state compliance, training a
 
 Program and Project Management: PMP-certified project management, cross-functional team leadership (100+, in-house and teaming partners), program design and implementation, stakeholder engagement, training design and delivery, community development program design, operational efficiency improvement (35%)
 
-Tools: Microsoft Office 365, Salesforce, HubSpot, GoHighLevel, Supabase, Next.js, Stripe`;
+Tools: Microsoft Office 365, Salesforce, HubSpot, GoHighLevel, Gusto, ADP, QuickBooks, Wave, Supabase, Next.js, Stripe`;
 
 export const CATEGORY_FOCUS: Record<Category, string> = {
   proposals:
@@ -193,6 +190,8 @@ export function workHistoryText(): string {
 // Real experience that is not in the bullets above. Add to this list; the resume writer may use
 // anything here as fact. Each item should name where it happened.
 export const ADDITIONAL_EXPERIENCE: string[] = [
+  "Found Crisis Services (2010 to 2018): recruited, hired, onboarded, and supervised 100+ volunteers and staff",
+  "Found Crisis Services: administered the full HR lifecycle, including payroll processing (Gusto, ADP, QuickBooks, Wave), benefits administration, performance management, and offboarding",
   "Found Crisis Services, Precise Consulting Services, and DefenseComply: ran people operations for these organizations, including hiring, onboarding and offboarding, performance management, HR policies and procedures, and workplace culture",
   "Found Crisis Services: handled sensitive and confidential staff and client matters with discretion, using trauma-informed, strengths-based practices",
   "Precise Consulting Services: designed and delivered compliance training and technical assistance for client organizations across NC, SC, and GA (training and development)",
