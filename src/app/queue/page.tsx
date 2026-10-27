@@ -32,6 +32,7 @@ const categoryLabel: Record<string, string> = {
   consulting:   'Consulting',
   govcon:       'GovCon',
   sales:        'Sales',
+  dei_hr:       'DEI / HR Compliance',
 }
 
 export default function QueuePage() {

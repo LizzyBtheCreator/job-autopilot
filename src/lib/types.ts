@@ -12,6 +12,7 @@ export type Category =
   | 'govcon_public'
   | 'business_dev'
   | 'consulting'
+  | 'dei_hr'
 
 export type JobStatus =
   | 'pending_review'

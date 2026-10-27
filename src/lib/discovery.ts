@@ -1,251 +1,266 @@
 import 'server-only'
 import { supabaseAdmin } from './supabase'
+import type { Category } from './types'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Target companies — all use Greenhouse's public job board API.
-// Free, no API key, no quota, no credits. Runs unlimited times.
-// Organized by primary focus but most employ across all job families.
-// ─────────────────────────────────────────────────────────────────────────────
-const COMPANIES: string[] = [
-  // Government consulting & professional services
-  'guidehouse', 'icf', 'noblis', 'lmi', 'anser', 'mitre', 'rand',
-  'urban-institute', 'mathematica', 'abt-associates', 'westat',
-  'prtm', 'boozallen', 'leidos', 'saic', 'caci', 'mantech',
-  'peraton', 'amentum', 'chenega', 'akima', 'caliber-systems',
-  'mav6', 'engility', 'dxc', 'unison', 'kforce',
-  // Big consulting / management consulting
-  'mckinsey', 'bcg', 'bain', 'accenture', 'deloitte', 'pwc', 'kpmg', 'ey',
-  'oliver-wyman', 'roland-berger', 'strategy-and', 'a-t-kearney',
-  'huron-consulting', 'navigant', 'fti-consulting', 'ankura',
-  'west-monroe', 'slalom', 'protiviti', 'kroll', 'tetra-tech',
-  'aecom', 'burns-mcdonnell', 'wsatkins', 'cdm-smith',
-  // Federal program / grants / compliance
-  'urban', 'policylink', 'center-on-budget', 'nlihc',
-  'national-council-nonprofits', 'vera-institute', 'csg-justice',
-  'third-sector', 'grantmakers-health', 'childrendefense',
-  'community-solutions', 'enterprise-community', 'lisc',
-  'neighborworks', 'homebase', 'nhpf',
-  // Compliance & risk
-  'riskonnect', 'rsm', 'baker-tilly', 'moss-adams', 'crowe',
-  'forvis', 'plante-moran', 'wipfli', 'marcum',
-  'ankura-consulting', 'cohnreznick', 'grant-thornton',
-  // Healthcare / federal health programs
-  'lewin-group', 'health-management-associates', 'maximus',
-  'molina-healthcare', 'centene', 'magellan-health',
-  'conduent', 'cotiviti', 'evolent-health', 'novu',
-  // Technology companies with large federal practices
-  'palantir', 'oracle', 'sap', 'microsoft', 'amazon',
-  'google', 'salesforce', 'servicenow', 'verint',
-  'carahsoft', 'immuta', 'telos', 'perspecta',
-  // Workforce / economic development / nonprofits
-  'jobstogether', 'workforce-development', 'goodwill',
-  'opportunities-industrialization', 'year-up', 'per-scholas',
-  'merit-america', 'general-assembly', 'teals',
-  // Housing / community development
-  'habitat-for-humanity', 'enterprise', 'local-initiatives',
-  'low-income-investment-fund', 'national-equity-fund',
-  'boston-capital', 'raymond-james-tax-credit',
-  // Financial services / public finance
-  'public-financial-management', 'ehlers', 'piper-sandler',
-  'raymond-james', 'stifel', 'baird',
-  // Research & policy
-  'rand-corporation', 'urban-institute', 'brookings', 'cato',
-  'heritage', 'center-american-progress', 'new-america',
-  'aspen-institute', 'carnegie', 'kaiser-family-foundation',
-  // Infrastructure / engineering (program mgmt roles)
-  'parsons', 'jacobs', 'wsp', 'hntb', 'pbworld',
-  'stantec', 'gannett-fleming', 'hdr', 'louis-berger',
-  // Defense & intelligence (capture / proposal / contracts)
-  'northrop-grumman', 'l3harris', 'bae-systems', 'raytheon',
-  'general-dynamics', 'lockheed-martin', 'boeing', 'textron',
-  'sierra-nevada', 'vectrus', 'dyncorp', 'parsons-defense',
-  'titan-defense', 'apogee', 'gdit', 'unison-consulting',
-  // SaaS / tech with BD / program roles
-  'stripe', 'twilio', 'zendesk', 'hubspot', 'klaviyo',
-  'lattice', 'rippling', 'brex', 'ramp', 'merge',
+// Job board exclusions on every query — forces results to company career pages
+const EXCL = '-site:indeed.com -site:linkedin.com -site:glassdoor.com -site:ziprecruiter.com -site:monster.com -site:careerbuilder.com -site:simplyhired.com -site:salary.com'
+
+// 12 queries total — each covers an entire job family.
+// At 12 queries per search, 2,500 Serper credits = 208 searches = months of use.
+const QUERIES: { q: string; category: Category }[] = [
+  // Proposals & Capture
+  {
+    q: `("proposal manager" OR "capture manager" OR "proposal director" OR "bid manager" OR "proposal operations") remote ${EXCL}`,
+    category: 'proposals',
+  },
+  // Contracts & Procurement
+  {
+    q: `("contracts manager" OR "contract administrator" OR "contract specialist" OR "procurement manager" OR "procurement analyst" OR "contracting officer") remote ${EXCL}`,
+    category: 'contracts',
+  },
+  // Compliance & Risk
+  {
+    q: `("compliance manager" OR "compliance director" OR "compliance program manager" OR "regulatory compliance" OR "federal compliance" OR "program integrity") remote ${EXCL}`,
+    category: 'compliance',
+  },
+  // Grants & Programs
+  {
+    q: `("grants manager" OR "grants administrator" OR "grant compliance" OR "program administrator" OR "federal grants manager") remote ${EXCL}`,
+    category: 'grants',
+  },
+  // Program & Operations
+  {
+    q: `("program manager" OR "program director" OR "PMO manager" OR "program operations" OR "portfolio manager" OR "program controls") remote federal government ${EXCL}`,
+    category: 'program_ops',
+  },
+  // Government & Public Sector
+  {
+    q: `("government consulting" OR "public sector consulting" OR "community development director" OR "economic development director" OR "workforce development" OR "government programs") remote ${EXCL}`,
+    category: 'govcon_public',
+  },
+  // Business Development
+  {
+    q: `("business development director" OR "director of business development" OR "VP of business development" OR "BD director" OR "strategic partnerships director") remote federal ${EXCL}`,
+    category: 'business_dev',
+  },
+  // Consulting
+  {
+    q: `("senior consultant" OR "principal consultant" OR "managing consultant" OR "management consulting" OR "implementation consultant") remote federal government ${EXCL}`,
+    category: 'consulting',
+  },
+  // DEI & HR Compliance — senior titles
+  {
+    q: `("chief diversity officer" OR "VP of DEI" OR "director of DEI" OR "chief people officer" OR "VP of HR compliance" OR "director of employee relations") remote ${EXCL}`,
+    category: 'dei_hr',
+  },
+  // DEI & HR Compliance — manager titles
+  {
+    q: `("DEI compliance manager" OR "diversity equity inclusion manager" OR "HR compliance manager" OR "employee relations manager" OR "EEO officer" OR "people operations compliance" OR "labor compliance manager") remote ${EXCL}`,
+    category: 'dei_hr',
+  },
+  // GovCon BD / federal defense — proposal + capture specific
+  {
+    q: `("capture manager" OR "proposal manager" OR "senior capture manager" OR "director of capture") remote federal defense DoD ${EXCL}`,
+    category: 'proposals',
+  },
+  // Sales / BD — commercial
+  {
+    q: `("sales director" OR "account director" OR "professional services director" OR "client development director") remote ${EXCL}`,
+    category: 'business_dev',
+  },
 ]
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Job title keywords — any job whose title contains one of these passes.
-// ─────────────────────────────────────────────────────────────────────────────
-const TITLE_KEYWORDS = [
-  // Proposals & Capture
-  'proposal', 'capture', 'bid manager', 'bid coordinator',
-  // Contracts & Procurement
+// Title keywords that must appear for a job to pass — covers all categories
+const QUALIFYING_TITLES = [
+  'proposal', 'capture', 'bid manager',
   'contract', 'contracts', 'procurement', 'acquisition', 'vendor manager',
-  // Compliance & Risk
-  'compliance', 'regulatory', 'risk and compliance', 'program integrity',
-  'quality assurance', 'policy and compliance',
-  // Grants & Programs
-  'grants', 'grant ', 'grant manager', 'grant admin', 'technical assistance',
-  'program administrator',
-  // Program & Operations
-  'program manager', 'program operations', 'pmo', 'portfolio manager',
-  'program analyst', 'program director', 'program governance',
-  'strategic operations', 'process improvement', 'operations manager',
-  'operations director', 'program controls',
-  // Government & Public Sector
+  'compliance', 'regulatory', 'program integrity', 'quality assurance',
+  'grants', 'grant ', 'technical assistance', 'program administrator',
+  'program manager', 'program director', 'program operations', 'pmo',
+  'portfolio manager', 'program analyst', 'program controls',
+  'strategic operations', 'process improvement', 'operations manager', 'operations director',
+  'business development', 'bd director', 'bd manager',
+  'strategic partnerships', 'account director', 'sales director', 'client development',
+  'senior consultant', 'principal consultant', 'managing consultant',
   'government consulting', 'public sector', 'community development',
   'economic development', 'workforce development', 'government programs',
-  'government relations', 'federal programs',
-  // Business Development
-  'business development', 'bd director', 'bd manager',
-  'capture director', 'director of business', 'vice president business',
-  'strategic partnerships', 'account director', 'sales director',
-  'professional services director', 'client development',
-  // Consulting
-  'senior consultant', 'principal consultant', 'managing consultant',
-  'management consulting', 'implementation consultant',
+  'diversity', 'dei', 'inclusion', 'equity', 'chief people officer',
+  'people operations', 'employee relations', 'eeo officer', 'hr compliance',
+  'labor compliance', 'chief diversity',
 ]
 
-// Hard disqualifiers — reject these even if a keyword matches
 const DISQUALIFY = [
   'software engineer', 'software developer', 'devops', 'data scientist',
   'machine learning', 'ml engineer', 'frontend', 'backend', 'full stack',
-  'fullstack', 'data engineer', 'mobile engineer', 'ios engineer',
-  'android engineer', 'site reliability', 'security engineer',
-  'network engineer', 'cloud engineer',
+  'fullstack', 'data engineer', 'mobile engineer', 'ios ', 'android ',
+  'site reliability', 'security engineer', 'network engineer', 'cloud engineer',
 ]
 
 function titleMatches(title: string): boolean {
   const t = title.toLowerCase()
   if (DISQUALIFY.some(d => t.includes(d))) return false
-  return TITLE_KEYWORDS.some(k => t.includes(k))
+  return QUALIFYING_TITLES.some(k => t.includes(k))
 }
 
-interface GreenhouseJob {
-  id: number
-  title: string
-  absolute_url: string
-  location?: { name?: string }
-  content?: string
-}
-
-async function fetchGreenhouseJobs(company: string): Promise<GreenhouseJob[]> {
-  try {
-    const url = `https://boards-api.greenhouse.io/v1/boards/${company}/jobs`
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(10000),
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    })
-    if (!res.ok) return []
-    const data = await res.json()
-    return Array.isArray(data?.jobs) ? data.jobs : []
-  } catch {
-    return []
-  }
-}
-
-function scoreJob(title: string, location: string): number {
+function scoreJob(title: string, description: string): number {
   const t = title.toLowerCase()
-  const l = (location ?? '').toLowerCase()
+  const text = (title + ' ' + description).toLowerCase()
   let score = 70
 
-  // Remote confirmed
-  if (l.includes('remote') || l.includes('anywhere') || l.includes('united states')) {
-    score += 10
-  }
-  // Senior / director level
-  if (/senior|director|vp |vice president|head of|chief|principal|lead |managing/.test(t)) {
-    score += 8
-  }
-  // Federal / government domain signals
-  if (/federal|government|public sector|defense|dod|civilian|grants|compliance/.test(t)) {
-    score += 7
-  }
+  if (/remote|work from home/.test(text)) score += 5
+  if (/federal|government|dod|defense|public sector|grants|compliance/.test(text)) score += 8
+  if (/senior|director|vp |vice president|head of|chief|principal|lead |managing/.test(t)) score += 8
+  if (/shipley|idiq|far|dfars|pmp|cmmc|nist|2 cfr|cdbg/.test(text)) score += 5
 
   return Math.min(95, score)
 }
 
-function mapCategory(title: string): string {
+function mapCategory(title: string): Category {
   const t = title.toLowerCase()
+  if (/diversity|dei|inclusion|equity|chief diversity|chief people|people ops|employee relations|eeo|hr compliance|labor compliance/.test(t)) return 'dei_hr'
   if (/proposal|capture|bid/.test(t)) return 'proposals'
   if (/contract|procurement|acquisition|vendor/.test(t)) return 'contracts'
   if (/compliance|regulatory|risk|integrity/.test(t)) return 'compliance'
   if (/grant|technical assistance|program admin/.test(t)) return 'grants'
-  if (/program manager|program ops|pmo|portfolio|program analyst|program director|program controls|program govern|operations manager|operations director|process improvement|strategic ops/.test(t)) return 'program_ops'
+  if (/program manager|program ops|pmo|portfolio|program analyst|program director|program controls|operations manager|operations director|process improvement/.test(t)) return 'program_ops'
   if (/community development|economic development|workforce|government program|government relation|public sector|federal program/.test(t)) return 'govcon_public'
   if (/business development|bd director|bd manager|partnerships|account director|sales director|client development/.test(t)) return 'business_dev'
   if (/consultant|consulting/.test(t)) return 'consulting'
   return 'govcon'
 }
 
+interface SerperResult {
+  title: string
+  link: string
+  snippet?: string
+}
+
+async function serperSearch(query: string): Promise<{ title: string; url: string; description: string }[]> {
+  const apiKey = process.env.SERPER_API_KEY
+  if (!apiKey) {
+    console.error('SERPER_API_KEY not set')
+    return []
+  }
+  try {
+    const res = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query, num: 10 }),
+    })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      console.error(`Serper error: ${res.status} — ${body.slice(0, 200)}`)
+      return []
+    }
+    const data = await res.json()
+    if (data?.statusCode === 400 || data?.message?.toLowerCase().includes('credit')) {
+      console.error('Serper out of credits')
+      return []
+    }
+    return (data?.organic ?? []).map((r: SerperResult) => ({
+      title: r.title ?? '',
+      url: r.link ?? '',
+      description: r.snippet ?? '',
+    }))
+  } catch (err) {
+    console.error('Serper fetch error:', err)
+    return []
+  }
+}
+
+// Clean "Company | Job Title" or "Job Title - Company" to extract just the job title
+function cleanTitle(raw: string): string {
+  const segments = raw.split(/\s*[\|–—]\s*/)
+  const match = segments.find(s => QUALIFYING_TITLES.some(k => s.toLowerCase().includes(k)))
+  return (match ?? segments[0]).trim()
+}
+
+const CLOSED_PATTERN = /no longer accepting|position has been filled|posting.*closed|no longer available|this job.*closed|job.*no longer|position.*filled/i
+
+async function isLive(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(7000),
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    })
+    if (res.status === 404 || res.status === 410) return false
+    if (!res.ok) return true
+    const text = await res.text()
+    return !CLOSED_PATTERN.test(text)
+  } catch {
+    return true
+  }
+}
+
 export async function runDiscovery(): Promise<{ found: number; saved: number; skipped: number }> {
   const db = supabaseAdmin()
   const today = new Date().toISOString().split('T')[0]
-
   let totalFound = 0, totalSaved = 0, totalSkipped = 0
 
-  // Process companies in batches of 10 to avoid overwhelming Vercel's function timeout
-  const BATCH = 10
-  for (let i = 0; i < COMPANIES.length; i += BATCH) {
-    const batch = COMPANIES.slice(i, i + BATCH)
+  for (const { q, category } of QUERIES) {
+    const results = await serperSearch(q)
+    totalFound += results.length
 
-    const results = await Promise.all(batch.map(async (company) => {
-      const jobs = await fetchGreenhouseJobs(company)
-      let found = 0, saved = 0, skipped = 0
+    for (const result of results) {
+      if (!result.url || !result.title) { totalSkipped++; continue }
 
-      for (const job of jobs) {
-        found++
-        if (!job.title || !job.absolute_url) { skipped++; continue }
-        if (!titleMatches(job.title)) { skipped++; continue }
-
-        // Skip if URL already in DB
-        const { data: existing } = await db
-          .from('discovered_jobs')
-          .select('id')
-          .eq('url', job.absolute_url)
-          .maybeSingle()
-        if (existing) { skipped++; continue }
-
-        const location = job.location?.name ?? ''
-        const score = scoreJob(job.title, location)
-        const category = mapCategory(job.title)
-        const isRemote = /remote|anywhere|united states/i.test(location)
-
-        const { error } = await db.from('discovered_jobs').insert({
-          title: job.title,
-          company: company.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-          url: job.absolute_url,
-          description: job.content
-            ? job.content.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 500)
-            : null,
-          role_category: 'govcon_other',
-          role_type: category,
-          is_remote: isRemote,
-          salary_raw: null,
-          fit_score: score,
-          fit_notes: category,
-          status: 'new',
-        })
-
-        if (error) {
-          console.error(`INSERT FAILED [${company}]: ${error.message}`)
-          skipped++
-        } else {
-          saved++
-        }
+      // Skip job board index/search pages
+      if (/\/(jobs|careers|search)\??[^/]*$/.test(result.url) && !/\/job\/|\/jobs\/\d|\/position\/|\/opening\//.test(result.url)) {
+        totalSkipped++; continue
       }
 
-      return { found, saved, skipped }
-    }))
+      // Skip if already in DB
+      const { data: existing } = await db
+        .from('discovered_jobs')
+        .select('id')
+        .eq('url', result.url)
+        .maybeSingle()
+      if (existing) { totalSkipped++; continue }
 
-    for (const r of results) {
-      totalFound += r.found
-      totalSaved += r.saved
-      totalSkipped += r.skipped
+      const title = cleanTitle(result.title)
+      const { score: _score } = { score: scoreJob(title, result.description) }
+      const score = scoreJob(title, result.description)
+
+      if (!titleMatches(title) && !titleMatches(result.title)) { totalSkipped++; continue }
+      if (score < 60) { totalSkipped++; continue }
+
+      // Check the posting is still live
+      if (!(await isLive(result.url))) { totalSkipped++; continue }
+
+      const isRemote = /remote|work from home/i.test(result.title + ' ' + result.description)
+      const cat = mapCategory(title) !== 'govcon' ? mapCategory(title) : category
+
+      const { error } = await db.from('discovered_jobs').insert({
+        title,
+        company: 'See listing',
+        url: result.url,
+        description: result.description,
+        role_category: 'govcon_other',
+        role_type: cat,
+        is_remote: isRemote,
+        salary_raw: null,
+        fit_score: score,
+        fit_notes: cat,
+        status: 'new',
+      })
+
+      if (error) {
+        console.error(`INSERT FAILED: ${error.message} | ${title}`)
+        totalSkipped++
+      } else {
+        totalSaved++
+      }
     }
 
-    // Small delay between batches to stay polite
-    if (i + BATCH < COMPANIES.length) {
-      await new Promise(r => setTimeout(r, 200))
-    }
+    // Small delay between Serper calls
+    await new Promise(r => setTimeout(r, 300))
   }
 
   if (totalSaved > 0) {
     await db.rpc('increment_discovered', { p_date: today, p_count: totalSaved })
   }
 
-  console.log(`Discovery complete: found=${totalFound} saved=${totalSaved} skipped=${totalSkipped}`)
+  console.log(`Discovery: found=${totalFound} saved=${totalSaved} skipped=${totalSkipped}`)
   return { found: totalFound, saved: totalSaved, skipped: totalSkipped }
 }
