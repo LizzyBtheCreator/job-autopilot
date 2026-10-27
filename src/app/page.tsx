@@ -4,7 +4,7 @@ import { currentUserEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CATEGORY_LABELS, STATUS_LABELS, type Job, type JobStatus, type SearchRun } from "@/lib/types";
 import { ClearNewButton, SearchButton, StatusButton } from "@/components/actions";
-import { Flags, StatusBadge } from "@/components/badges";
+import { Flags, ResponseBadge, StatusBadge } from "@/components/badges";
 
 export const dynamic = "force-dynamic";
 
@@ -146,6 +146,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                   <div className="flex flex-wrap items-center gap-2">
                     <Link href={`/jobs/${job.id}`} className="font-medium hover:underline">{job.title}</Link>
                     <StatusBadge status={job.status} />
+                    <ResponseBadge response={job.response} />
                   </div>
                   <p className="text-sm text-stone-600 dark:text-stone-400">
                     {job.company ?? "Unknown company"} · {CATEGORY_LABELS[job.category] ?? job.category} ·{" "}
@@ -160,6 +161,9 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                   <Link className={job.resume ? "btn-secondary" : "btn-primary"} href={`/jobs/${job.id}`}>
                     {job.resume ? "Resume" : "Write resume"}
                   </Link>
+                  {job.resume && job.status !== "dismissed" && job.status !== "applied" && (
+                    <StatusButton id={job.id} status="applied" label="Mark applied" />
+                  )}
                   {job.status !== "dismissed" && job.status !== "applied" && (
                     <StatusButton id={job.id} status="dismissed" label="Dismiss" />
                   )}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { JobStatus } from "@/lib/types";
+import { RESPONSE_LABELS, type JobResponse, type JobStatus } from "@/lib/types";
 
 async function call(url: string, init: RequestInit): Promise<string | null> {
   try {
@@ -57,6 +57,35 @@ export function StatusButton({ id, status, label, primary }: { id: string; statu
     >
       {label}
     </button>
+  );
+}
+
+// Record what happened after applying. Clicking the current answer clears it.
+export function ResponseButtons({ id, response }: { id: string; response: JobResponse | null }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {(Object.keys(RESPONSE_LABELS) as JobResponse[]).map((r) => (
+        <button
+          key={r}
+          className={`rounded-md px-2.5 py-1 text-xs ${
+            r === response ? "bg-teal-700 text-white" : "border border-stone-300 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+          }`}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            const next = r === response ? null : r;
+            const err = await call(`/api/jobs/${id}`, { method: "PATCH", body: JSON.stringify({ response: next }) });
+            if (err) alert(err);
+            setBusy(false);
+            router.refresh();
+          }}
+        >
+          {RESPONSE_LABELS[r]}
+        </button>
+      ))}
+    </div>
   );
 }
 

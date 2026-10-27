@@ -83,6 +83,11 @@ create table if not exists jobs (
   applied_at timestamptz,
   updated_at timestamptz not null default now()
 );
+-- What happened after applying. Empty means no reply yet.
+alter table jobs add column if not exists response text
+  check (response in ('heard_back', 'interview', 'offer', 'rejected'));
+alter table jobs add column if not exists response_at timestamptz;
+
 create index if not exists jobs_status_idx on jobs (status);
 create index if not exists jobs_last_seen_idx on jobs (last_seen_at desc);
 

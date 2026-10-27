@@ -1,5 +1,5 @@
-import type { JobStatus } from "@/lib/types";
-import { STATUS_LABELS } from "@/lib/types";
+import type { JobResponse, JobStatus } from "@/lib/types";
+import { RESPONSE_LABELS, STATUS_LABELS } from "@/lib/types";
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   new: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
@@ -13,6 +13,18 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 
 export function StatusBadge({ status }: { status: JobStatus }) {
   return <span className={`badge ${STATUS_COLORS[status]}`}>{STATUS_LABELS[status]}</span>;
+}
+
+const RESPONSE_COLORS: Record<JobResponse, string> = {
+  heard_back: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
+  interview: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300",
+  offer: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  rejected: "bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-400",
+};
+
+export function ResponseBadge({ response }: { response: JobResponse | null }) {
+  if (!response) return null;
+  return <span className={`badge ${RESPONSE_COLORS[response]}`}>{RESPONSE_LABELS[response]}</span>;
 }
 
 export function Flags({ flags }: { flags: string[] }) {

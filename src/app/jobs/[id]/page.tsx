@@ -6,8 +6,8 @@ import { resumeFileName } from "@/lib/filename";
 import { buildChatPrompt, companyFromPosting, fetchPosting, postingFlags } from "@/lib/resume";
 import { loadSettings } from "@/lib/search";
 import { CATEGORY_LABELS, type Job } from "@/lib/types";
-import { CopyForClaude, ResumeEditor, StatusButton } from "@/components/actions";
-import { Flags, StatusBadge } from "@/components/badges";
+import { CopyForClaude, ResponseButtons, ResumeEditor, StatusButton } from "@/components/actions";
+import { Flags, ResponseBadge, StatusBadge } from "@/components/badges";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -43,6 +43,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-semibold">{job.title}</h1>
           <StatusBadge status={job.status} />
+          <ResponseBadge response={job.response} />
         </div>
         <p className="text-sm text-stone-600 dark:text-stone-400">
           {job.company ?? "Unknown company"} · {CATEGORY_LABELS[job.category] ?? job.category} · {job.salary_text ?? "Salary not listed"}
@@ -50,12 +51,20 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         <Flags flags={job.flags} />
         <div className="flex flex-wrap gap-2 pt-1">
           <a className="btn-secondary" href={job.url} target="_blank" rel="noreferrer">Open posting to apply</a>
-          {(job.status === "ready" || job.status === "needs_review") && (
+          {job.status !== "applied" && job.status !== "dismissed" && (
             <StatusButton id={job.id} status="applied" label="Mark applied" primary />
           )}
           {job.status !== "dismissed" && <StatusButton id={job.id} status="dismissed" label="Dismiss" />}
           {job.status === "dismissed" && <StatusButton id={job.id} status="new" label="Restore" />}
         </div>
+        {job.status === "applied" && (
+          <div className="space-y-1 border-t border-stone-200 pt-3 dark:border-stone-800">
+            <p className="text-sm text-stone-600 dark:text-stone-400">
+              Applied {job.applied_at ? new Date(job.applied_at).toLocaleDateString("en-US", { timeZone: "America/New_York", dateStyle: "medium" }) : ""}. What happened?
+            </p>
+            <ResponseButtons id={job.id} response={job.response} />
+          </div>
+        )}
       </section>
 
       <section className="card space-y-3">

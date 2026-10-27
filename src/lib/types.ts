@@ -37,6 +37,16 @@ export const STATUS_LABELS: Record<JobStatus, string> = {
   error: "Error",
 };
 
+// What happened after applying. null means no reply yet.
+export type JobResponse = "heard_back" | "interview" | "offer" | "rejected";
+
+export const RESPONSE_LABELS: Record<JobResponse, string> = {
+  heard_back: "Heard back",
+  interview: "Interview",
+  offer: "Offer",
+  rejected: "Rejected",
+};
+
 export interface Settings {
   review_required: boolean;
   min_salary: number;
@@ -74,6 +84,8 @@ export interface Job {
   last_seen_at: string;
   generated_at: string | null;
   applied_at: string | null;
+  response: JobResponse | null;
+  response_at: string | null;
 }
 
 export interface Requirements {

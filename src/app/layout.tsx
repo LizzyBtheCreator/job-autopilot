@@ -15,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav className="mx-auto flex max-w-6xl items-center gap-5 px-4 py-3 text-sm">
             <Link href="/" className="font-semibold">Job Autopilot</Link>
             <Link href="/" className="text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white">Jobs</Link>
+            <Link href="/tracking" className="text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white">Tracking</Link>
             <Link href="/settings" className="text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white">Settings</Link>
             <form action="/auth/signout" method="post" className="ml-auto">
               <button className="text-stone-500 hover:text-stone-900 dark:hover:text-white">Sign out</button>
