@@ -15,8 +15,8 @@ export const CONTACT = {
 // because employers verify those.
 export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; bullets: string[] }[] = [
   {
-    key: "DefenseComply Pro",
-    heading: "DefenseComply Pro - Founder (Remote) | 2025 to Present",
+    key: "Defense Comply Pro",
+    heading: "Defense Comply Pro - Founder (Remote) | 2025 to Present",
     selfOwned: true,
     bullets: [
       "Building a compliance intelligence SaaS platform under Defense Compliance Solutions for defense contractors and federal cloud vendors pursuing CMMC, FedRAMP, and FISMA authorization",
@@ -26,8 +26,8 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
     ],
   },
   {
-    key: "DefenseComply",
-    heading: "DefenseComply - Founder and Principal Compliance Advisor (Remote) | 2024 to Present",
+    key: "Defense Comply",
+    heading: "Defense Comply - Founder and Principal Compliance Advisor (Remote) | 2024 to Present",
     selfOwned: true,
     bullets: [
       "Advise small and mid-size defense contractors pursuing CMMC certification and DoD contract eligibility",
@@ -155,7 +155,7 @@ export const CATEGORY_FOCUS: Record<Category, string> = {
   contracts:
     "CONTRACTS, CONTRACT ADMINISTRATION, or PROCUREMENT role. Lead with: FAR/DFARS compliance, cost/price proposals across FFP, CPFF, T&M, and fixed-price contract types, 100+ client engagements with zero audit findings, SBA 8(a)/IDIQ/GWAC/OTA/BAA vehicles, teaming agreements and subcontractor flow-downs, SAM.gov navigation. Anchor roles are Federal Contracting Solutions and Precise Consulting Services.",
   compliance:
-    "COMPLIANCE or GRC role. Lead with compliance program management and regulatory framework expertise. Primary roles: DefenseComply Pro (CMMC/FedRAMP/FISMA SaaS), DefenseComply (active CMMC/NIST 800-171 advisory), Precise Consulting Services (federal compliance, zero audit findings across 100+ engagements), Federal Contracting Solutions (FAR/DFARS). Key frameworks: CMMC, NIST 800-171, FedRAMP, FISMA, FAR/DFARS, 2 CFR Part 200. Key skills: POA&M management, SSP documentation, SPRS scoring, audit readiness. Never lead with BD or sales metrics.",
+    "COMPLIANCE or GRC role. Lead with compliance program management and regulatory framework expertise. Primary roles: Defense Comply Pro (CMMC/FedRAMP/FISMA SaaS), Defense Comply (active CMMC/NIST 800-171 advisory), Precise Consulting Services (federal compliance, zero audit findings across 100+ engagements), Federal Contracting Solutions (FAR/DFARS). Key frameworks: CMMC, NIST 800-171, FedRAMP, FISMA, FAR/DFARS, 2 CFR Part 200. Key skills: POA&M management, SSP documentation, SPRS scoring, audit readiness. Never lead with BD or sales metrics.",
   grants:
     "GRANTS MANAGEMENT role. Lead with: $325M+ in federal funding secured and administered, full grant lifecycle (HUD, CDBG, HOME, LIHTC, CDFI, HUD-VASH, Grants Per Diem), 2 CFR Part 200 (Uniform Guidance), EDGAR, Davis-Bacon, single audit preparation, HUD/IDIS reporting, zero audit findings across 100+ client engagements. Anchor role is Precise Consulting Services.",
   program_ops:
@@ -163,7 +163,7 @@ export const CATEGORY_FOCUS: Record<Category, string> = {
   business_dev:
     "BUSINESS DEVELOPMENT role. Lead with: $320M+ in government contract activity, 72% win rate, $3M+ commercial recurring revenue, 120% quota attainment, 200+ account pipeline, Salesforce/HubSpot/GoHighLevel, strategic partnerships and teaming agreements. Anchor roles are Federal Contracting Solutions, Syxsense, and GoHighLevel.",
   consulting:
-    "CONSULTING role. Lead with: 18+ years of federal consulting across government contracting, compliance, grants, and community development, 100+ client engagements with zero audit findings, $325M+ federal funding administered, active CMMC advisory practice (DefenseComply), compliance training delivered across NC, SC, and GA. Anchor role is Precise Consulting Services.",
+    "CONSULTING role. Lead with: 18+ years of federal consulting across government contracting, compliance, grants, and community development, 100+ client engagements with zero audit findings, $325M+ federal funding administered, active CMMC advisory practice (Defense Comply), compliance training delivered across NC, SC, and GA. Anchor role is Precise Consulting Services.",
   public_sector:
     "PUBLIC SECTOR / COMMUNITY, ECONOMIC, or WORKFORCE DEVELOPMENT role. Lead with: community development program leadership (200+ youth and families served annually over 8 years), $325M+ federal funding for housing, education, and community development, CDBG/HOME/LIHTC program lifecycle, technical assistance across NC, SC, and GA, stakeholder engagement. Anchor roles are Precise Consulting Services and Found Crisis Services.",
   dei_hr:
@@ -184,10 +184,10 @@ export function workHistoryText(): string {
 export const ADDITIONAL_EXPERIENCE: string[] = [
   "Found Crisis Services (2010 to 2018): recruited, hired, onboarded, and supervised 100+ volunteers and staff",
   "Found Crisis Services: administered the full HR lifecycle, including payroll processing (Gusto, ADP, QuickBooks, Wave), benefits administration, performance management, and offboarding",
-  "Found Crisis Services, Precise Consulting Services, and DefenseComply: ran people operations for these organizations, including hiring, onboarding and offboarding, performance management, HR policies and procedures, and workplace culture",
+  "Found Crisis Services, Precise Consulting Services, and Defense Comply: ran people operations for these organizations, including hiring, onboarding and offboarding, performance management, HR policies and procedures, and workplace culture",
   "Found Crisis Services: handled sensitive and confidential staff and client matters with discretion, using trauma-informed, strengths-based practices",
   "Precise Consulting Services: designed and delivered compliance training and technical assistance for client organizations across NC, SC, and GA (training and development)",
   "Precise Consulting Services: applied Davis-Bacon labor standards and federal compliance requirements for client organizations in three states (NC, SC, GA)",
-  "DefenseComply and Federal Contracting Solutions: partnered with IT, Legal, contracts, and executive leaders to meet deadlines and resolve issues",
+  "Defense Comply and Federal Contracting Solutions: partnered with IT, Legal, contracts, and executive leaders to meet deadlines and resolve issues",
   "18+ years coordinating cross-functional teams and 100+ client engagements",
 ];
