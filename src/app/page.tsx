@@ -74,7 +74,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="text-stone-500">
-                    <tr><th className="py-1 pr-3">Query</th><th className="pr-3">Returned</th><th className="pr-3">New</th><th className="pr-3">Already listed</th><th className="pr-3">Filtered</th><th>Error</th></tr>
+                    <tr><th className="py-1 pr-3">Query</th><th className="pr-3">Returned</th><th className="pr-3">New</th><th className="pr-3">Already listed</th><th className="pr-3">Filtered</th><th>Notes</th></tr>
                   </thead>
                   <tbody>
                     {lastRun.per_query.map((p) => (
@@ -84,7 +84,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                         <td className="pr-3">{p.new}</td>
                         <td className="pr-3">{p.seen_before}</td>
                         <td className="pr-3">{p.dropped}</td>
-                        <td className="text-red-600">{p.error ?? ""}</td>
+                        <td className={p.error ? "text-red-600" : "text-stone-500"}>{p.error ?? p.note ?? ""}</td>
                       </tr>
                     ))}
                   </tbody>

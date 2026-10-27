@@ -17,11 +17,9 @@ interface SerperResult {
   date?: string;
 }
 
-async function serper(q: string, settings: Settings): Promise<SerperResult[]> {
+async function serperCall(body: Record<string, unknown>): Promise<{ ok: true; rows: SerperResult[] } | { ok: false; status: number; text: string }> {
   const key = process.env.SERPER_API_KEY;
   if (!key) throw new Error("SERPER_API_KEY is not set in Vercel");
-  const body: Record<string, unknown> = { q, num: settings.results_per_query, gl: "us", hl: "en" };
-  if (settings.recency !== "any") body.tbs = `qdr:${settings.recency}`;
   const res = await fetch("https://google.serper.dev/search", {
     method: "POST",
     headers: { "X-API-KEY": key, "Content-Type": "application/json" },
@@ -29,9 +27,29 @@ async function serper(q: string, settings: Settings): Promise<SerperResult[]> {
     cache: "no-store",
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`Serper returned ${res.status}: ${text.slice(0, 200)}`);
+  if (!res.ok) return { ok: false, status: res.status, text: text.slice(0, 200) };
   const data = JSON.parse(text) as { organic?: SerperResult[] };
-  return data.organic ?? [];
+  return { ok: true, rows: data.organic ?? [] };
+}
+
+// Serper's free plan rejects some options ("Query pattern not allowed for free accounts").
+// Try the full request first, then step down to what the plan accepts, and say which one worked.
+async function serper(query: string, exclusions: string, settings: Settings): Promise<{ rows: SerperResult[]; note: string | null }> {
+  const full: Record<string, unknown> = { q: `${query} ${exclusions}`, num: settings.results_per_query, gl: "us", hl: "en" };
+  if (settings.recency !== "any") full.tbs = `qdr:${settings.recency}`;
+  const attempts: { body: Record<string, unknown>; note: string | null }[] = [
+    { body: full, note: null },
+    { body: { q: `${query} ${exclusions}`, num: 10 }, note: "Serper plan limit: ran without the date filter, 10 results" },
+    { body: { q: query, num: 10 }, note: "Serper plan limit: ran without the date filter or site exclusions, 10 results" },
+  ];
+  let last = "";
+  for (const a of attempts) {
+    const r = await serperCall(a.body);
+    if (r.ok) return { rows: r.rows, note: a.note };
+    last = `Serper returned ${r.status}: ${r.text}`;
+    if (!(r.status === 400 && /not allowed/i.test(r.text))) break;
+  }
+  throw new Error(last);
 }
 
 function normalizeUrl(raw: string): string {
@@ -118,15 +136,16 @@ export async function runSearch(): Promise<string> {
   const results = await Promise.all(
     queries.map(async (q) => {
       try {
-        return { q, rows: await serper(`${q.query} ${exclusions}`, settings), error: null as string | null };
+        const r = await serper(q.query, exclusions, settings);
+        return { q, rows: r.rows, note: r.note, error: null as string | null };
       } catch (e) {
-        return { q, rows: [] as SerperResult[], error: e instanceof Error ? e.message : String(e) };
+        return { q, rows: [] as SerperResult[], note: null, error: e instanceof Error ? e.message : String(e) };
       }
     }),
   );
 
-  for (const { q, rows, error } of results) {
-    const stats: QueryStats = { label: q.label, query: q.query, returned: rows.length, new: 0, seen_before: 0, dropped: 0, error };
+  for (const { q, rows, note, error } of results) {
+    const stats: QueryStats = { label: q.label, query: q.query, returned: rows.length, new: 0, seen_before: 0, dropped: 0, error, note };
     totalReturned += rows.length;
 
     const keep: { url: string; title: string; company: string | null; snippet: string; salary: ReturnType<typeof parseSalary> }[] = [];

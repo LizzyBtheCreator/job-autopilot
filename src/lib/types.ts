@@ -93,6 +93,7 @@ export interface QueryStats {
   seen_before: number;
   dropped: number;
   error: string | null;
+  note?: string | null;
 }
 
 export interface DroppedResult {
