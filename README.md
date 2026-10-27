@@ -19,7 +19,7 @@ Searches Google (through Serper) for remote jobs that match your queries, filter
 
 ## How it works
 
-- **Search** (Jobs page > Run search): every query that is on runs at once. Each result goes through the filters in `src/lib/filters.ts` (not a single posting, state/local government, active clearance, not remote, salary below your minimum). No salary listed counts as passing. The run records how many results each query returned and every dropped result with its reason, so a zero is always explained.
+- **Search** (Jobs page > Run search): every query that is on runs at once. Each result goes through the filters in `src/lib/filters.ts` (not a single posting, active clearance, not remote, salary below your minimum). No salary listed counts as passing. The run records how many results each query returned and every dropped result with its reason, so a zero is always explained.
 - **Resume** (Generate resume on a job): fetches the full posting, has Claude Haiku pull out the employer's exact language, then has Claude Sonnet write the resume using only the facts in `src/lib/profile.ts`. After writing, code replaces any em dash and checks for filler phrases, an education section, and the locked role order. The full posting is checked against the filters again and anything found is shown as a warning on the job.
 - **Review** (Settings): with review on, resumes wait in Needs review until you approve them. With it off they go straight to Ready to apply. Either way you apply yourself from the posting link.
 

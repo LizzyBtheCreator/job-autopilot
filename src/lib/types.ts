@@ -83,7 +83,6 @@ export interface Requirements {
   salary_text: string;
   work_location: "remote" | "hybrid" | "onsite" | "unclear";
   requires_active_clearance: boolean;
-  is_state_or_local_government: boolean;
 }
 
 export interface QueryStats {

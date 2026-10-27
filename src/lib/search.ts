@@ -1,14 +1,13 @@
 import "server-only";
 import { db } from "./db";
-import { clearanceReason, notAJobReason, notRemoteReason, parseSalary, salaryReason, stateOrLocalGovReason } from "./filters";
+import { clearanceReason, notAJobReason, notRemoteReason, parseSalary, salaryReason } from "./filters";
 import type { DroppedResult, QueryStats, SearchQuery, Settings } from "./types";
 
 // Sites left out of every query. LinkedIn, Indeed and the other big aggregators block page
-// fetching, so a tailored resume could not read the full posting. governmentjobs.com is
-// almost entirely state and local government.
+// fetching, so a tailored resume could not read the full posting.
 export const EXCLUDED_SITES = [
   "linkedin.com", "indeed.com", "glassdoor.com", "ziprecruiter.com", "monster.com",
-  "careerbuilder.com", "simplyhired.com", "salary.com", "governmentjobs.com",
+  "careerbuilder.com", "simplyhired.com", "salary.com",
 ];
 
 interface SerperResult {
@@ -148,7 +147,6 @@ export async function runSearch(): Promise<string> {
       const salary = parseSalary(text);
       const reason =
         notAJobReason(url, rawTitle) ??
-        stateOrLocalGovReason(url, text) ??
         clearanceReason(text) ??
         notRemoteReason(text) ??
         salaryReason(salary.max, settings.min_salary);

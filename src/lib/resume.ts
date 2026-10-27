@@ -2,7 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import { clearanceReason, notRemoteReason, parseSalary, salaryReason, stateOrLocalGovReason } from "./filters";
+import { clearanceReason, notRemoteReason, parseSalary, salaryReason } from "./filters";
 import { CATEGORY_FOCUS, CERTIFICATIONS, CONTACT, SKILLS, WORK_HISTORY, workHistoryText } from "./profile";
 import type { Job, Requirements, Settings } from "./types";
 
@@ -105,7 +105,6 @@ const RequirementsSchema = z.object({
   salary_text: z.string(),
   work_location: z.enum(["remote", "hybrid", "onsite", "unclear"]),
   requires_active_clearance: z.boolean(),
-  is_state_or_local_government: z.boolean(),
 });
 
 async function extractRequirements(job: Job, posting: string): Promise<Requirements> {
@@ -125,7 +124,6 @@ async function extractRequirements(job: Job, posting: string): Promise<Requireme
 - salary_text: the pay range as written, or "" if none
 - work_location: remote, hybrid, onsite, or unclear
 - requires_active_clearance: true only if an active or current security clearance is required (being able to obtain one later does not count)
-- is_state_or_local_government: true only if the employer is a state, county, city, or school district government
 
 Job title: ${job.title}
 Company (may be wrong): ${job.company ?? "unknown"}
@@ -148,19 +146,7 @@ const FILLER = [
   "think outside the box", "seasoned professional", "highly motivated", "best-in-class", "rockstar",
 ];
 
-function salaryAtLeast(job: Job, req: Requirements, floor: number): boolean {
-  const fromReq = parseSalary(req.salary_text ?? "");
-  const top = Math.max(job.salary_max ?? 0, fromReq.max ?? 0);
-  return top >= floor;
-}
-
-function buildPrompt(job: Job, req: Requirements, posting: string, includeTrial: boolean): string {
-  const trial = includeTrial
-    ? `Right after the summary, include this section:
-## TRIAL ENGAGEMENT AVAILABLE
-Two or three sentences offering a one-week, no-risk trial that begins within 10 business days of the first interview. Cite the 72% win rate or the $320M+ in contract activity. Confident, framed as standard consulting practice. State that the offer expires if not started within 10 business days of the first interview.`
-    : "Do not include a trial engagement section.";
-
+function buildPrompt(job: Job, req: Requirements, posting: string): string {
   return `Write a resume for ${CONTACT.name}, tailored to the job below.
 
 JOB: ${job.title} at ${req.company_name || job.company || "the employer"}
@@ -194,9 +180,8 @@ RULES:
 4. Every bullet contains a specific metric or a named skill, tool, regulation, agency, or methodology.
 5. The summary is 4 sentences at most. Its first sentence is her strongest match to this specific role and names the employer's top 2 or 3 priorities.
 6. Leave out roles that do not help for this job, but keep the ones you include in the numbered order above. Never reorder them.
-7. No education section, no references, no salary, no personal notes.
+7. No education section, no references, no salary, no personal notes, no trial or engagement offers.
 8. Length: 1 to 1.5 pages.
-9. ${trial}
 
 OUTPUT FORMAT (plain text, exactly this structure, nothing before or after):
 # ${CONTACT.name}
@@ -243,8 +228,6 @@ function postingFlags(job: Job, req: Requirements, posting: string, settings: Se
   if (!posting) flags.push("Could not load the full posting; resume is based on the search snippet");
   const clearance = clearanceReason(text);
   if (req.requires_active_clearance || clearance) flags.push(clearance ?? "Posting requires an active security clearance");
-  const gov = stateOrLocalGovReason(job.url, text);
-  if (req.is_state_or_local_government || gov) flags.push(gov ?? "Employer is state or local government");
   if (req.work_location === "hybrid" || req.work_location === "onsite") flags.push(`Posting says ${req.work_location}`);
   else {
     const notRemote = notRemoteReason(text);
@@ -267,13 +250,12 @@ export interface GeneratedResume {
 export async function generateResume(job: Job, settings: Settings): Promise<GeneratedResume> {
   const posting = (await fetchPosting(job.url)) || `${job.title}\n${job.snippet ?? ""}`;
   const requirements = await extractRequirements(job, posting);
-  const includeTrial = salaryAtLeast(job, requirements, 100000);
 
   const message = await anthropic()
     .messages.stream({
       model: WRITE_MODEL,
       max_tokens: 32000,
-      messages: [{ role: "user", content: buildPrompt(job, requirements, posting, includeTrial) }],
+      messages: [{ role: "user", content: buildPrompt(job, requirements, posting) }],
     })
     .finalMessage();
 
