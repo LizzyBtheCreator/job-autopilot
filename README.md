@@ -12,7 +12,6 @@ Searches Google (through Serper) for remote jobs that match your queries, filter
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `SERPER_API_KEY`
-   - `ANTHROPIC_API_KEY`
 
    Add one new one:
    - `ALLOWED_EMAIL`: the email you created in step 2. Only that account can use the app.
@@ -20,13 +19,13 @@ Searches Google (through Serper) for remote jobs that match your queries, filter
 ## How it works
 
 - **Search** (Jobs page > Run search): every query that is on runs at once. Each result goes through the filters in `src/lib/filters.ts` (not a single posting, active clearance, not remote, salary below your minimum). No salary listed counts as passing. The run records how many results each query returned and every dropped result with its reason, so a zero is always explained.
-- **Resume** (Generate resume on a job): fetches the full posting, has Claude Haiku pull out the employer's exact language, then has Claude Sonnet write the resume using only the facts in `src/lib/profile.ts`. After writing, code replaces any em dash and checks for filler phrases, an education section, and the locked role order. The full posting is checked against the filters again and anything found is shown as a warning on the job.
-- **Review** (Settings): with review on, resumes wait in Needs review until you approve them. With it off they go straight to Ready to apply. Either way you apply yourself from the posting link.
+- **Resume** (open a job > Copy for Claude): the tool reads the full posting and copies one prompt with the posting, your profile from `src/lib/profile.ts`, and every resume rule. A new Claude chat opens; paste and send, and Claude writes the resume plus a Word file named for the job. This runs on your Claude subscription, so the tool makes no Anthropic API calls.
+- **Tracking**: paste the finished resume into the job's box and save. The job moves to Ready to apply, you can print it as a PDF, and Mark applied when you submit.
 
 ## Files
 
 - `src/lib/search.ts`: Serper search and saving
 - `src/lib/filters.ts`: all filter rules
-- `src/lib/resume.ts`: posting fetch, Haiku extraction, Sonnet writing, rule checks
+- `src/lib/resume.ts`: posting fetch, the Copy for Claude prompt, rule checks
 - `src/lib/profile.ts`: your contact info, work history, certifications, skills, and per-category focus
 - `supabase/schema.sql`: database

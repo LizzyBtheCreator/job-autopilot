@@ -1,18 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JobStatus } from "@/lib/types";
-
-// Set when the server reports an Anthropic account problem, so automatic tailoring stops.
-let accountPaused = false;
 
 async function call(url: string, init: RequestInit): Promise<string | null> {
   try {
     const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json" } });
     if (res.ok) return null;
-    const body = (await res.json().catch(() => ({}))) as { error?: string; paused?: boolean };
-    if (body.paused) accountPaused = true;
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
     return body.error ?? `Request failed (${res.status})`;
   } catch (e) {
     return e instanceof Error ? e.message : String(e);
@@ -40,99 +36,6 @@ export function SearchButton() {
         {busy ? "Searching... (about 20 seconds)" : "Run search"}
       </button>
       {error && <span className="text-sm text-red-600">{error}</span>}
-    </div>
-  );
-}
-
-export function GenerateButton({ id, label = "Generate resume" }: { id: string; label?: string }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <span className="inline-flex flex-col gap-1">
-      <button
-        className="btn-primary"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          setError(null);
-          setError(await call(`/api/jobs/${id}/generate`, { method: "POST" }));
-          setBusy(false);
-          router.refresh();
-        }}
-      >
-        {busy ? "Writing... (1 to 3 minutes)" : label}
-      </button>
-      {error && <span className="max-w-xs text-xs text-red-600">{error}</span>}
-    </span>
-  );
-}
-
-// Tailors a resume for every job that needs one, one at a time so each request stays inside
-// Vercel's time limit. Starts by itself whenever this page is open and jobs are waiting.
-export function AutoTailor({ pending }: { pending: number }) {
-  const router = useRouter();
-  const [running, setRunning] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [done, setDone] = useState(0);
-  const [current, setCurrent] = useState<string | null>(null);
-  const [lastError, setLastError] = useState<string | null>(null);
-  const stop = useRef(false);
-  const active = useRef(false);
-
-  async function run() {
-    if (active.current) return;
-    active.current = true;
-    stop.current = false;
-    accountPaused = false;
-    setRunning(true);
-    while (!stop.current) {
-      const res = await fetch("/api/jobs/next", { cache: "no-store" }).catch(() => null);
-      if (!res?.ok) { setLastError("Could not check for waiting jobs"); break; }
-      const { next } = (await res.json()) as { next: { id: string; title: string } | null };
-      if (!next) break;
-      setCurrent(next.title);
-      const err = await call(`/api/jobs/${next.id}/generate`, { method: "POST" });
-      if (accountPaused) {
-        setLastError(err);
-        setPaused(true);
-        break;
-      }
-      if (err) setLastError(`${next.title}: ${err}`);
-      else setDone((d) => d + 1);
-      router.refresh();
-    }
-    setCurrent(null);
-    setRunning(false);
-    active.current = false;
-    router.refresh();
-  }
-
-  useEffect(() => {
-    if (pending > 0 && !paused && !active.current) void run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pending, paused]);
-
-  if (!running && pending === 0 && done === 0) return null;
-  return (
-    <div className="card flex flex-wrap items-center gap-3 text-sm">
-      {running ? (
-        <>
-          <span>
-            Tailoring resumes automatically: {done} done{pending ? `, about ${Math.max(pending - (current ? 1 : 0), 0)} waiting` : ""}.
-            {current && <> Working on <b>{current}</b> (1 to 3 minutes each).</>} Keep this page open.
-          </span>
-          <button className="btn-secondary" onClick={() => { stop.current = true; setPaused(true); }}>Pause</button>
-        </>
-      ) : paused && pending > 0 ? (
-        <>
-          <span>Paused with {pending} jobs waiting.</span>
-          <button className="btn-primary" onClick={() => setPaused(false)}>Resume</button>
-        </>
-      ) : (
-        <span>All found jobs have a tailored resume. {done ? `${done} written this session.` : ""}</span>
-      )}
-      {lastError && <span className="w-full text-xs text-red-600">Last problem: {lastError}</span>}
     </div>
   );
 }
@@ -167,7 +70,8 @@ export function ResumeEditor({ id, resume, fileName }: { id: string; resume: str
   return (
     <div className="space-y-2">
       <textarea
-        className="input h-[70vh] font-mono text-[13px] leading-relaxed"
+        className={`input font-mono text-[13px] leading-relaxed ${resume ? "h-[70vh]" : "h-48"}`}
+        placeholder="Paste the finished resume from Claude here, then press Save resume. This keeps it with the job so you can print it and track it."
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -187,8 +91,10 @@ export function ResumeEditor({ id, resume, fileName }: { id: string; resume: str
             router.refresh();
           }}
         >
-          Save edits
+          {resume ? "Save edits" : "Save resume"}
         </button>
+        {resume && (
+        <>
         <button
           className="btn-secondary"
           onClick={async () => {
@@ -208,6 +114,8 @@ export function ResumeEditor({ id, resume, fileName }: { id: string; resume: str
         <a className="btn-secondary" href={`/jobs/${id}/print`} target="_blank" rel="noreferrer">
           Print / Save as PDF
         </a>
+        </>
+        )}
         {!saved && <span className="text-sm text-amber-600">Unsaved changes</span>}
         {msg && saved && <span className="text-sm text-stone-500">{msg}</span>}
       </div>
@@ -247,5 +155,30 @@ export function ClearNewButton({ count }: { count: number }) {
     >
       {armed ? `Click again to remove all ${count} New jobs` : "Clear New list"}
     </button>
+  );
+}
+
+// Copies the full prompt (posting, profile, rules) and opens a new Claude chat to paste it into.
+// The prompt is already on the page, so the copy happens right on the click.
+export function CopyForClaude({ prompt }: { prompt: string }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <button
+        className="btn-primary"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(prompt);
+            setMsg("Copied. In the new Claude tab, press Cmd+V, then Enter.");
+            window.open("https://claude.ai/new", "_blank", "noopener");
+          } catch {
+            setMsg("Could not copy automatically. Use the box below: click it, press Cmd+A, then Cmd+C.");
+          }
+        }}
+      >
+        Copy for Claude
+      </button>
+      {msg && <span className="max-w-md text-xs text-stone-600 dark:text-stone-400">{msg}</span>}
+    </span>
   );
 }

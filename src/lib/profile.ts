@@ -173,7 +173,7 @@ export const CATEGORY_FOCUS: Record<Category, string> = {
 export function workHistoryText(): string {
   return WORK_HISTORY.map((r, i) => {
     const kind = r.selfOwned
-      ? "HER OWN BUSINESS: rewrite the title (see rules); keep company name, location and dates"
+      ? "MY OWN BUSINESS: rewrite the title (see rules); keep company name, location and dates"
       : "EMPLOYER ROLE: keep this exact title";
     return `${i + 1}. ${r.heading}\n   [${kind}]\n${r.bullets.map((b) => `- ${b}`).join("\n")}`;
   }).join("\n\n");

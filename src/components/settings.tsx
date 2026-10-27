@@ -25,15 +25,6 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         router.refresh();
       }}
     >
-      <label className="flex items-start gap-3">
-        <input type="checkbox" className="mt-1" checked={s.review_required} onChange={(e) => setS({ ...s, review_required: e.target.checked })} />
-        <span>
-          <span className="font-medium">Review every resume before applying</span>
-          <span className="block text-sm text-stone-500">
-            On: new resumes land in Needs review until you approve them. Off: they go straight to Ready to apply.
-          </span>
-        </span>
-      </label>
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block text-sm">
           Minimum salary ($)

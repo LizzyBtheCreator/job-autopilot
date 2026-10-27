@@ -16,12 +16,21 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     update.status = body.status;
     if (body.status === "applied") update.applied_at = new Date().toISOString();
   }
+  const supabase = db();
   if (typeof body.resume === "string") {
-    // Your edits go through the same no-em-dash rule.
-    update.resume = enforceRules(body.resume).text;
+    // Pasted resumes and edits go through the same no-em-dash rule.
+    const { text } = enforceRules(body.resume);
+    update.resume = text || null;
+    const { data: current } = await supabase.from("jobs").select("status").eq("id", id).single();
+    if (text) {
+      update.generated_at = new Date().toISOString();
+      update.error = null;
+      const st = (current?.status as string | undefined) ?? "new";
+      if (!body.status && ["new", "generating", "error", "needs_review"].includes(st)) update.status = "ready";
+    }
   }
 
-  const { error } = await db().from("jobs").update(update).eq("id", id);
+  const { error } = await supabase.from("jobs").update(update).eq("id", id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true });
 }

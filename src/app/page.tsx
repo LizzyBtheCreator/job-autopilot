@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUserEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CATEGORY_LABELS, STATUS_LABELS, type Job, type JobStatus, type SearchRun } from "@/lib/types";
-import { AutoTailor, ClearNewButton, GenerateButton, SearchButton, StatusButton } from "@/components/actions";
+import { ClearNewButton, SearchButton, StatusButton } from "@/components/actions";
 import { Flags, StatusBadge } from "@/components/badges";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +32,6 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
     );
   }
   const lastRun = (runs?.[0] ?? null) as SearchRun | null;
-
-  const { count: pendingCount } = await supabase
-    .from("jobs")
-    .select("id", { count: "exact", head: true })
-    .is("resume", null)
-    .or("status.in.(new,generating),and(status.eq.error,error.ilike.*credit balance*)");
 
   const counts: Record<string, number> = { all: statusRows?.length ?? 0 };
   for (const r of (statusRows ?? []) as { status: string }[]) counts[r.status] = (counts[r.status] ?? 0) + 1;
@@ -123,8 +117,6 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         )}
       </section>
 
-      <AutoTailor pending={pendingCount ?? 0} />
-
       <section className="space-y-3">
         <div className="flex flex-wrap gap-1.5">
           {TABS.map((t) => (
@@ -165,10 +157,9 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <a className="btn-secondary" href={job.url} target="_blank" rel="noreferrer">Posting</a>
-                  {(job.status === "new" || job.status === "error" || job.status === "generating") && (
-                    <GenerateButton id={job.id} label={job.status === "new" ? "Generate resume" : "Retry"} />
-                  )}
-                  {job.resume && <Link className="btn-secondary" href={`/jobs/${job.id}`}>Resume</Link>}
+                  <Link className={job.resume ? "btn-secondary" : "btn-primary"} href={`/jobs/${job.id}`}>
+                    {job.resume ? "Resume" : "Write resume"}
+                  </Link>
                   {job.status !== "dismissed" && job.status !== "applied" && (
                     <StatusButton id={job.id} status="dismissed" label="Dismiss" />
                   )}

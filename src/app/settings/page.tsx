@@ -36,7 +36,7 @@ export default async function SettingsPage() {
           <li>Remote only. A result is dropped only when it clearly says on-site or hybrid and never says remote.</li>
           <li>Salary at or above your minimum. No salary listed counts as passing.</li>
           <li>No roles that require an active security clearance. &quot;Able to obtain&quot; is allowed.</li>
-          <li>When a resume is written, the full posting is checked again and anything that slipped through is flagged on the job.</li>
+          <li>When you open a job, the full posting is checked again and anything that slipped through is flagged on the job.</li>
         </ul>
       </section>
     </div>
