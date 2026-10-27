@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUserEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CATEGORY_LABELS, STATUS_LABELS, type Job, type JobStatus, type SearchRun } from "@/lib/types";
-import { ClearNewButton, GenerateAllButton, GenerateButton, SearchButton, StatusButton } from "@/components/actions";
+import { AutoTailor, ClearNewButton, GenerateButton, SearchButton, StatusButton } from "@/components/actions";
 import { Flags, StatusBadge } from "@/components/badges";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +32,12 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
     );
   }
   const lastRun = (runs?.[0] ?? null) as SearchRun | null;
+
+  const { count: pendingCount } = await supabase
+    .from("jobs")
+    .select("id", { count: "exact", head: true })
+    .is("resume", null)
+    .in("status", ["new", "generating"]);
 
   const counts: Record<string, number> = { all: statusRows?.length ?? 0 };
   for (const r of (statusRows ?? []) as { status: string }[]) counts[r.status] = (counts[r.status] ?? 0) + 1;
@@ -117,6 +123,8 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         )}
       </section>
 
+      <AutoTailor pending={pendingCount ?? 0} />
+
       <section className="space-y-3">
         <div className="flex flex-wrap gap-1.5">
           {TABS.map((t) => (
@@ -132,7 +140,6 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
 
         {status === "new" && (
           <div className="flex flex-wrap gap-2">
-            <GenerateAllButton ids={jobs.filter((j) => j.status === "new").map((j) => j.id)} />
             <ClearNewButton count={jobs.filter((j) => j.status === "new" && !j.resume).length} />
           </div>
         )}

@@ -154,6 +154,8 @@ Government Contracting and Compliance: Capture management, proposal management (
 
 IT and Technical: Syxsense (endpoint security, patch management, automation), cloud platform administration, CRM administration, technical client support, remote troubleshooting, IT project coordination, Next.js, Supabase, Stripe integration, Anthropic API
 
+HR and People Operations: employee relations, multi-state compliance, training and development, performance management, onboarding and offboarding, HR policy development, stakeholder management, organizational development, confidential matter handling
+
 Program and Project Management: PMP-certified project management, cross-functional team leadership (100+, in-house and teaming partners), program design and implementation, stakeholder engagement, training design and delivery, community development program design, operational efficiency improvement (35%)
 
 Tools: Microsoft Office 365, Salesforce, HubSpot, GoHighLevel, Supabase, Next.js, Stripe`;
@@ -190,4 +192,11 @@ export function workHistoryText(): string {
 
 // Real experience that is not in the bullets above. Add to this list; the resume writer may use
 // anything here as fact. Each item should name where it happened.
-export const ADDITIONAL_EXPERIENCE: string[] = [];
+export const ADDITIONAL_EXPERIENCE: string[] = [
+  "Found Crisis Services, Precise Consulting Services, and DefenseComply: ran people operations for these organizations, including hiring, onboarding and offboarding, performance management, HR policies and procedures, and workplace culture",
+  "Found Crisis Services: handled sensitive and confidential staff and client matters with discretion, using trauma-informed, strengths-based practices",
+  "Precise Consulting Services: designed and delivered compliance training and technical assistance for client organizations across NC, SC, and GA (training and development)",
+  "Precise Consulting Services: applied Davis-Bacon labor standards and federal compliance requirements for client organizations in three states (NC, SC, GA)",
+  "DefenseComply and Federal Contracting Solutions: partnered with IT, Legal, contracts, and executive leaders to meet deadlines and resolve issues",
+  "18+ years coordinating cross-functional teams and 100+ client engagements",
+];

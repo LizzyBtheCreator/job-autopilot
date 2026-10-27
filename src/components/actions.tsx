@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JobStatus } from "@/lib/types";
 
@@ -64,33 +64,66 @@ export function GenerateButton({ id, label = "Generate resume" }: { id: string; 
   );
 }
 
-// Generates one at a time so each request stays inside Vercel's time limit.
-export function GenerateAllButton({ ids }: { ids: string[] }) {
+// Tailors a resume for every job that needs one, one at a time so each request stays inside
+// Vercel's time limit. Starts by itself whenever this page is open and jobs are waiting.
+export function AutoTailor({ pending }: { pending: number }) {
   const router = useRouter();
-  const [done, setDone] = useState<number | null>(null);
-  const [failed, setFailed] = useState(0);
-  if (!ids.length) return null;
-  const running = done !== null && done < ids.length;
+  const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [done, setDone] = useState(0);
+  const [current, setCurrent] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const stop = useRef(false);
+  const active = useRef(false);
+
+  async function run() {
+    if (active.current) return;
+    active.current = true;
+    stop.current = false;
+    setRunning(true);
+    while (!stop.current) {
+      const res = await fetch("/api/jobs/next", { cache: "no-store" }).catch(() => null);
+      if (!res?.ok) { setLastError("Could not check for waiting jobs"); break; }
+      const { next } = (await res.json()) as { next: { id: string; title: string } | null };
+      if (!next) break;
+      setCurrent(next.title);
+      const err = await call(`/api/jobs/${next.id}/generate`, { method: "POST" });
+      if (err) setLastError(`${next.title}: ${err}`);
+      setDone((d) => d + 1);
+      router.refresh();
+    }
+    setCurrent(null);
+    setRunning(false);
+    active.current = false;
+    router.refresh();
+  }
+
+  useEffect(() => {
+    if (pending > 0 && !paused && !active.current) void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, paused]);
+
+  if (!running && pending === 0 && done === 0) return null;
   return (
-    <span className="inline-flex items-center gap-2 text-sm">
-      <button
-        className="btn-secondary"
-        disabled={running}
-        onClick={async () => {
-          setDone(0);
-          setFailed(0);
-          for (let i = 0; i < ids.length; i++) {
-            const err = await call(`/api/jobs/${ids[i]}/generate`, { method: "POST" });
-            if (err) setFailed((f) => f + 1);
-            setDone(i + 1);
-            router.refresh();
-          }
-        }}
-      >
-        {running ? `Writing ${done! + 1} of ${ids.length}...` : `Generate all ${ids.length} on this page`}
-      </button>
-      {done !== null && !running && <span>Done. {failed ? `${failed} failed, see the Error tab.` : ""}</span>}
-    </span>
+    <div className="card flex flex-wrap items-center gap-3 text-sm">
+      {running ? (
+        <>
+          <span>
+            Tailoring resumes automatically: {done} done{pending ? `, about ${Math.max(pending - (current ? 1 : 0), 0)} waiting` : ""}.
+            {current && <> Working on <b>{current}</b> (1 to 3 minutes each).</>} Keep this page open.
+          </span>
+          <button className="btn-secondary" onClick={() => { stop.current = true; setPaused(true); }}>Pause</button>
+        </>
+      ) : paused && pending > 0 ? (
+        <>
+          <span>Paused with {pending} jobs waiting.</span>
+          <button className="btn-primary" onClick={() => setPaused(false)}>Resume</button>
+        </>
+      ) : (
+        <span>All found jobs have a tailored resume. {done ? `${done} written this session.` : ""}</span>
+      )}
+      {lastError && <span className="w-full text-xs text-red-600">Last problem: {lastError}</span>}
+    </div>
   );
 }
 
