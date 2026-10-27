@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { currentUserEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { resumeFileName } from "@/lib/filename";
 import { CATEGORY_LABELS, type Job } from "@/lib/types";
 import { GenerateButton, ResumeEditor, StatusButton } from "@/components/actions";
 import { Flags, StatusBadge } from "@/components/badges";
@@ -45,7 +46,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
       {job.resume ? (
         <section className="space-y-2">
           <h2 className="font-semibold">Tailored resume</h2>
-          <ResumeEditor id={job.id} resume={job.resume} />
+          <ResumeEditor id={job.id} resume={job.resume} fileName={resumeFileName(job.title)} />
         </section>
       ) : (
         <p className="text-sm text-stone-500">No resume yet.</p>

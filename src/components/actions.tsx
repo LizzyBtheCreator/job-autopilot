@@ -147,7 +147,7 @@ export function StatusButton({ id, status, label, primary }: { id: string; statu
   );
 }
 
-export function ResumeEditor({ id, resume }: { id: string; resume: string }) {
+export function ResumeEditor({ id, resume, fileName }: { id: string; resume: string; fileName: string }) {
   const router = useRouter();
   const [text, setText] = useState(resume);
   const [saved, setSaved] = useState(true);
@@ -190,7 +190,7 @@ export function ResumeEditor({ id, resume }: { id: string; resume: string }) {
         </button>
         <a
           className="btn-secondary"
-          download="Elizabeth-McMillan-Resume.txt"
+          download={`${fileName}.txt`}
           href={`data:text/plain;charset=utf-8,${encodeURIComponent(text)}`}
         >
           Download .txt

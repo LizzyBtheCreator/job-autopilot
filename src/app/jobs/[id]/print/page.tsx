@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { resumeFileName } from "@/lib/filename";
 import { currentUserEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PrintButton } from "@/components/actions";
@@ -32,6 +34,13 @@ function render(resume: string) {
   });
   flush();
   return out;
+}
+
+// The browser uses the page title as the PDF file name.
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const { data } = await db().from("jobs").select("title").eq("id", id).maybeSingle();
+  return { title: data?.title ? resumeFileName(data.title as string) : "Resume" };
 }
 
 export default async function PrintPage({ params }: { params: Promise<{ id: string }> }) {
