@@ -10,22 +10,27 @@ export const CONTACT = {
 };
 
 // Reverse chronological. This order is locked: roles may be left out, never reordered.
-export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[] = [
+// selfOwned roles are her own businesses. On the resume their title is rewritten to a functional
+// title for the work she did there (never Founder/Owner). Roles at other employers keep their real title,
+// because employers verify those.
+export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; bullets: string[] }[] = [
   {
     key: "DefenseComply Pro",
     heading: "DefenseComply Pro - Founder (Remote) | 2025 to Present",
+    selfOwned: true,
     bullets: [
       "Building a compliance intelligence SaaS platform under Defense Compliance Solutions for defense contractors and federal cloud vendors pursuing CMMC, FedRAMP, and FISMA authorization",
       "Platform replaces the traditional $15,000-$50,000 consultant-led assessment with AI-powered control gap analysis, automated policy generation, POA&M management, evidence tracking, live SPRS scoring, and assessor-ready documentation export",
       "Designed subcontractor flow-down management, contract/RFP compliance scanning, and a managed services concierge module that connects clients to compliance experts for hands-on program execution",
-      "Productizing 18 years of federal compliance program management experience, including an active advisory practice and prior sales team, into a scalable SaaS platform serving the 300,000+ CMMC-obligated contractor market",
+      "Translated 18 years of federal compliance program management experience into a scalable SaaS platform serving the 300,000+ CMMC-obligated contractor market",
     ],
   },
   {
     key: "DefenseComply",
     heading: "DefenseComply - Founder and Principal Compliance Advisor (Remote) | 2024 to Present",
+    selfOwned: true,
     bullets: [
-      "Founded and operate an active compliance advisory practice serving small and mid-size defense contractors pursuing CMMC certification and DoD contract eligibility",
+      "Advise small and mid-size defense contractors pursuing CMMC certification and DoD contract eligibility",
       "Lead clients through full compliance program lifecycle including NIST SP 800-171 Rev. 3 gap assessments, System Security Plan (SSP) and POA&M documentation, evidence pack development, and SPRS scoring",
       "Translate complex regulatory requirements including CMMC, NIST 800-171, and DFARS flow-down obligations into actionable remediation roadmaps and 30-day implementation plans",
       "Coordinate alignment across client IT, Legal, contracts, and executive stakeholders to drive compliance milestones against procurement and contractual deadlines",
@@ -34,8 +39,9 @@ export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[]
   {
     key: "BidWinAlert",
     heading: "BidWinAlert - Founder (Remote) | 2024 to Present",
+    selfOwned: true,
     bullets: [
-      "Founded and launched a government contracting intelligence platform that automates opportunity discovery, proposal readiness, and compliance tracking for federal contractors with paying clients",
+      "Launched a government contracting intelligence platform that automates opportunity discovery, proposal readiness, and compliance tracking for federal contractors",
       "Defined product vision, go-to-market strategy, pricing model, and subscription structure for a SaaS platform serving the govcon market",
       "Translated 18 years of hands-on federal BD and proposal experience into a scalable product, demonstrating the ability to identify market gaps, build AI-powered solutions, and deliver them to production",
     ],
@@ -43,6 +49,7 @@ export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[]
   {
     key: "Federal Contracting Solutions",
     heading: "Federal Contracting Solutions - Senior Business Development Consultant (Remote) | June 2021 to December 2024",
+    selfOwned: false,
     bullets: [
       "Drove $320M+ in government contract activity with a sustained 72% win rate across DoD military departments (Army, Navy, Air Force, Space Force, SOCOM, CYBERCOM, DIA, DISA), HUD, HHS, and GSA",
       "Applied Shipley methodology to lead capture campaigns 6+ months prior to RFP release; developed win strategies, sales themes, and differentiating narratives for competitive RFPs, RFIs, BAAs, OTAs, and IDIQ task orders",
@@ -57,6 +64,7 @@ export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[]
   {
     key: "Syxsense",
     heading: "Syxsense - Senior Business Development Specialist (Remote) | January 2022 to January 2024",
+    selfOwned: false,
     bullets: [
       "Expanded presence in federal IT ecosystem; increased revenue from key accounts by 40% through consultative selling",
       "Delivered live technical demos of IT management software: endpoint security, patch management, and automation features",
@@ -68,6 +76,7 @@ export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[]
   {
     key: "GoHighLevel",
     heading: "GoHighLevel - Business Development Specialist (Remote) | September 2019 to December 2023",
+    selfOwned: false,
     bullets: [
       "Closed $3M+ in recurring revenue through direct client acquisition and strategic partnerships",
       "Achieved 120% of sales quotas through solution-focused client engagement",
@@ -79,6 +88,7 @@ export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[]
   {
     key: "Precise Consulting Services",
     heading: "Precise Consulting Services - Principal Consultant (Remote) | 2006 to Present",
+    selfOwned: true,
     bullets: [
       "Secured and administered $325M+ in federal funding for clients across housing, education, and community development over 13+ years",
       "Managed full grant lifecycle across HUD, CDBG, HOME, LIHTC, CDFI, HUD-VASH, and Grants Per Diem programs including procurement, compliance, reporting, audit preparation, and closeout",
@@ -91,8 +101,9 @@ export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[]
   {
     key: "Tax and Financial Services Practice",
     heading: "Tax and Financial Services Practice - Owner/Operator | Fayetteville, NC",
+    selfOwned: true,
     bullets: [
-      "Operated a tax preparation and financial advisory practice serving individual and small business clients",
+      "Delivered tax preparation and financial advisory services to individual and small business clients",
       "Conducted credit analysis including financial statement review, cash flow analysis, and creditworthiness assessment",
       "Managed loan portfolio advisory and supported clients in structuring financing arrangements",
       "Maintained client financial records, prepared federal and state tax filings, and provided financial planning guidance",
@@ -101,6 +112,7 @@ export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[]
   {
     key: "Social Media Management Company",
     heading: "Social Media Management Company - Owner/Founder (Remote)",
+    selfOwned: true,
     bullets: [
       "Managed content strategy, paid advertising, and community management for client accounts",
       "Ran Facebook and Instagram ad campaigns with measurable ROI for diverse client base",
@@ -111,8 +123,9 @@ export const WORK_HISTORY: { key: string; heading: string; bullets: string[] }[]
   {
     key: "Found Crisis Services",
     heading: "Found Crisis Services - Founder and Director | Fayetteville, NC",
+    selfOwned: true,
     bullets: [
-      "Founded and operated a crisis intervention and community support organization serving underserved populations",
+      "Directed a crisis intervention and community support organization serving underserved populations",
       "Designed and implemented community-based programs using trauma-informed, strengths-based service delivery",
       "Served 200+ underprivileged youth and families annually over 8 years on a lean operating budget under $1,000/month",
       "Coordinated community partnerships, stakeholder engagement, and public sector collaboration",
@@ -163,9 +176,18 @@ export const CATEGORY_FOCUS: Record<Category, string> = {
   public_sector:
     "PUBLIC SECTOR / COMMUNITY, ECONOMIC, or WORKFORCE DEVELOPMENT role. Lead with: community development program leadership (200+ youth and families served annually over 8 years), $325M+ federal funding for housing, education, and community development, CDBG/HOME/LIHTC program lifecycle, technical assistance across NC, SC, and GA, stakeholder engagement. Anchor roles are Precise Consulting Services and Found Crisis Services.",
   dei_hr:
-    "DEI, HR COMPLIANCE, or EMPLOYEE RELATIONS role. Lead with: 18+ years of compliance program management, community and workforce program design (200+ families and youth served annually), technical assistance to diverse organizations across NC, SC, and GA, federal regulatory compliance (2 CFR Part 200, FAR, Davis-Bacon, EDGAR), zero audit findings across 100+ engagements, training design and delivery. Anchor roles are Precise Consulting Services and Found Crisis Services. Never lead with BD or sales metrics. Never mention WBE/MBE/SBE designations.",
+    "PEOPLE OPERATIONS, HR, DEI, HR COMPLIANCE, or EMPLOYEE RELATIONS role. Frame her as an HR and people operations professional: employment and labor law compliance (Davis-Bacon labor standards, federal and multi-state requirements), policy and procedure development, audit support and complete, accurate documentation, training and coaching managers and staff, stakeholder and leadership partnership, program design, and any HR experience in her additional experience notes. Lead with: 18+ years of compliance program management, community and workforce program design (200+ families and youth served annually), technical assistance to diverse organizations across NC, SC, and GA, federal regulatory compliance (2 CFR Part 200, FAR, Davis-Bacon, EDGAR), zero audit findings across 100+ engagements, training design and delivery. Anchor roles are Precise Consulting Services and Found Crisis Services. Never lead with BD or sales metrics. Never mention WBE/MBE/SBE designations.",
 };
 
 export function workHistoryText(): string {
-  return WORK_HISTORY.map((r, i) => `${i + 1}. ${r.heading}\n${r.bullets.map((b) => `- ${b}`).join("\n")}`).join("\n\n");
+  return WORK_HISTORY.map((r, i) => {
+    const kind = r.selfOwned
+      ? "HER OWN BUSINESS: rewrite the title (see rules); keep company name, location and dates"
+      : "EMPLOYER ROLE: keep this exact title";
+    return `${i + 1}. ${r.heading}\n   [${kind}]\n${r.bullets.map((b) => `- ${b}`).join("\n")}`;
+  }).join("\n\n");
 }
+
+// Real experience that is not in the bullets above. Add to this list; the resume writer may use
+// anything here as fact. Each item should name where it happened.
+export const ADDITIONAL_EXPERIENCE: string[] = [];
