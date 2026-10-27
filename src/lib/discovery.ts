@@ -175,23 +175,6 @@ function cleanTitle(raw: string): string {
   return (match ?? segments[0]).trim()
 }
 
-const CLOSED_PATTERN = /no longer accepting|position has been filled|posting.*closed|no longer available|this job.*closed|job.*no longer|position.*filled/i
-
-async function isLive(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, {
-      redirect: 'follow',
-      signal: AbortSignal.timeout(7000),
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    })
-    if (res.status === 404 || res.status === 410) return false
-    if (!res.ok) return true
-    const text = await res.text()
-    return !CLOSED_PATTERN.test(text)
-  } catch {
-    return true
-  }
-}
 
 export async function runDiscovery(): Promise<{ found: number; saved: number; skipped: number }> {
   const db = supabaseAdmin()
@@ -205,8 +188,8 @@ export async function runDiscovery(): Promise<{ found: number; saved: number; sk
     for (const result of results) {
       if (!result.url || !result.title) { totalSkipped++; continue }
 
-      // Skip job board index/search pages
-      if (/\/(jobs|careers|search)\??[^/]*$/.test(result.url) && !/\/job\/|\/jobs\/\d|\/position\/|\/opening\//.test(result.url)) {
+      // Skip job board index pages (no path segment after /jobs or /careers)
+      if (/\/(jobs|careers)\/?$/.test(result.url)) {
         totalSkipped++; continue
       }
 
@@ -219,14 +202,9 @@ export async function runDiscovery(): Promise<{ found: number; saved: number; sk
       if (existing) { totalSkipped++; continue }
 
       const title = cleanTitle(result.title)
-      const { score: _score } = { score: scoreJob(title, result.description) }
       const score = scoreJob(title, result.description)
 
       if (!titleMatches(title) && !titleMatches(result.title)) { totalSkipped++; continue }
-      if (score < 60) { totalSkipped++; continue }
-
-      // Check the posting is still live
-      if (!(await isLive(result.url))) { totalSkipped++; continue }
 
       const isRemote = /remote|work from home/i.test(result.title + ' ' + result.description)
       const cat = mapCategory(title) !== 'govcon' ? mapCategory(title) : category
