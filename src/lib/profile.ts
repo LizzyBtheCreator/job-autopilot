@@ -24,7 +24,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
       "Lead clients through full compliance program lifecycle including NIST SP 800-171 Rev. 3 gap assessments, System Security Plan (SSP) and POA&M documentation, evidence pack development, and SPRS scoring",
       "Translate complex regulatory requirements including CMMC, NIST 800-171, and DFARS flow-down obligations into actionable remediation roadmaps and 30-day implementation plans",
       "Coordinate alignment across client IT, Legal, contracts, and executive stakeholders to drive compliance milestones against procurement and contractual deadlines",
-      "Built a compliance intelligence SaaS platform (Defense Comply Pro) for defense contractors and federal cloud vendors pursuing CMMC, FedRAMP, and FISMA authorization, replacing the traditional $15,000-$50,000 consultant-led assessment with AI-powered control gap analysis, automated policy generation, POA&M management, evidence tracking, live SPRS scoring, and assessor-ready documentation export",
+      "Built a compliance intelligence SaaS platform (Defense Comply Pro) for defense contractors and federal cloud vendors pursuing CMMC, FedRAMP, and FISMA authorization, replacing the traditional consultant-led assessment with AI-powered control gap analysis, automated policy generation, POA&M management, evidence tracking, live SPRS scoring, and assessor-ready documentation export",
       "Designed subcontractor flow-down management, contract/RFP compliance scanning, and a managed services module that connects clients to compliance experts for hands-on program execution, serving the 300,000+ CMMC-obligated contractor market",
     ],
   },
@@ -45,7 +45,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
     selfOwned: true,
     bullets: [
       "Administered CDBG grants across the full program lifecycle: procurement, environmental review (24 CFR Part 58), Davis-Bacon, HUD/IDIS reporting, single audit (2 CFR Part 200 Subpart F), and grant closeout",
-      "Directly served 100+ veterans across NC, SC, and GA (2014 to 2022), advising on housing placement, group home development ($450K construction), and new residential development (about $900K)",
+      "Directly served 100+ veterans across NC, SC, and GA (2014 to 2022), advising on housing placement, group home development, and new residential development",
       "Managed full grant lifecycle across HUD, CDBG, HOME, LIHTC, CDFI, HUD-VASH, and Grants Per Diem programs including procurement, compliance, reporting, audit preparation, and closeout",
       "Provided federal compliance advisory across 2 CFR Part 200, FAR, EDGAR, Davis-Bacon, environmental review (24 CFR Part 58), and SAM.gov navigation with zero audit findings across 100+ client engagements",
       "Wrote and developed winning federal proposals and grant applications across defense, civilian, and housing program areas",
