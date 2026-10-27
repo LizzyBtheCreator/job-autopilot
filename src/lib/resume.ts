@@ -132,6 +132,7 @@ RULES (follow every one):
 14. Field language: if the posting is not about government contracting, grants, or federal compliance, do not cite federal regulations or programs by name or code (FAR, DFARS, EDGAR, 2 CFR Part 200, 24 CFR Part 58, Davis-Bacon, CMMC, NIST, HUD, CDBG, HOME, LIHTC, SAM.gov) unless the posting names them. Describe that work in the posting's own field terms (compliance, audits, documentation, policy, training) or leave it out.
 15. Scale: leave out details that make my work sound small, such as small budgets.
 16. Do not claim knowledge of specific state laws or "multi-state employment law" unless my history says so. My NC, SC, and GA work was compliance training and technical assistance.
+17. Individual results: my dollar figures, win rates, and client results come from my own work, not team or company totals. Where it strengthens the bullet, make that clear with honest wording such as "personally captured", "personally secured", or "as lead proposal writer". Do not use it on bullets about teams I built or led.
 
 OUTPUT:
 1. Show the resume as text in exactly this structure:
