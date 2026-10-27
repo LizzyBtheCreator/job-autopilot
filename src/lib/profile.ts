@@ -83,6 +83,9 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
       "Managed end-to-end pursuit of federal opportunities across 10+ agencies",
       "Configured cloud-based CRM and marketing automation systems for clients; trained end-users remotely",
       "Designed BD plans enabling on-time and compliant proposal delivery",
+      "Managed content strategy, paid advertising, and community management for client accounts",
+      "Ran Facebook and Instagram ad campaigns with measurable ROI for a diverse client base",
+      "Developed brand strategy and digital content calendars aligned to client business goals",
     ],
   },
   {
@@ -107,17 +110,6 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
       "Conducted credit analysis including financial statement review, cash flow analysis, and creditworthiness assessment",
       "Managed loan portfolio advisory and supported clients in structuring financing arrangements",
       "Maintained client financial records, prepared federal and state tax filings, and provided financial planning guidance",
-    ],
-  },
-  {
-    key: "Social Media Management Company",
-    heading: "Social Media Management Company - Owner/Founder (Remote) | 2020 to 2022",
-    selfOwned: true,
-    bullets: [
-      "Managed content strategy, paid advertising, and community management for client accounts",
-      "Ran Facebook and Instagram ad campaigns with measurable ROI for diverse client base",
-      "Developed brand strategy and digital content calendars aligned to client business goals",
-      "Acquired and retained client accounts through consultative service delivery",
     ],
   },
   {
