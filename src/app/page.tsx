@@ -37,7 +37,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
     .from("jobs")
     .select("id", { count: "exact", head: true })
     .is("resume", null)
-    .in("status", ["new", "generating"]);
+    .or("status.in.(new,generating),and(status.eq.error,error.ilike.*credit balance*)");
 
   const counts: Record<string, number> = { all: statusRows?.length ?? 0 };
   for (const r of (statusRows ?? []) as { status: string }[]) counts[r.status] = (counts[r.status] ?? 0) + 1;

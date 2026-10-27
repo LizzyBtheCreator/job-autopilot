@@ -12,7 +12,7 @@ export async function GET() {
     .from("jobs")
     .select("id, title")
     .is("resume", null)
-    .or(`status.eq.new,and(status.eq.generating,updated_at.lt.${stale})`)
+    .or(`status.eq.new,and(status.eq.generating,updated_at.lt.${stale}),and(status.eq.error,error.ilike.*credit balance*)`)
     .order("last_seen_at", { ascending: false })
     .limit(1);
   if (error) return Response.json({ error: error.message }, { status: 500 });

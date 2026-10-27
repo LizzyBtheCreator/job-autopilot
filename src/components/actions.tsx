@@ -4,11 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JobStatus } from "@/lib/types";
 
+// Set when the server reports an Anthropic account problem, so automatic tailoring stops.
+let accountPaused = false;
+
 async function call(url: string, init: RequestInit): Promise<string | null> {
   try {
     const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json" } });
     if (res.ok) return null;
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    const body = (await res.json().catch(() => ({}))) as { error?: string; paused?: boolean };
+    if (body.paused) accountPaused = true;
     return body.error ?? `Request failed (${res.status})`;
   } catch (e) {
     return e instanceof Error ? e.message : String(e);
@@ -80,6 +84,7 @@ export function AutoTailor({ pending }: { pending: number }) {
     if (active.current) return;
     active.current = true;
     stop.current = false;
+    accountPaused = false;
     setRunning(true);
     while (!stop.current) {
       const res = await fetch("/api/jobs/next", { cache: "no-store" }).catch(() => null);
@@ -88,8 +93,13 @@ export function AutoTailor({ pending }: { pending: number }) {
       if (!next) break;
       setCurrent(next.title);
       const err = await call(`/api/jobs/${next.id}/generate`, { method: "POST" });
+      if (accountPaused) {
+        setLastError(err);
+        setPaused(true);
+        break;
+      }
       if (err) setLastError(`${next.title}: ${err}`);
-      setDone((d) => d + 1);
+      else setDone((d) => d + 1);
       router.refresh();
     }
     setCurrent(null);
