@@ -68,11 +68,11 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
       </section>
 
       <section className="card space-y-3">
-        <h2 className="font-semibold">1. Write the resume in Claude</h2>
+        <h2 className="font-semibold">Write the resume in Claude</h2>
         <ol className="ml-5 list-decimal space-y-1 text-sm text-stone-600 dark:text-stone-400">
-          <li>Press Copy for Claude. A new Claude chat opens in another tab.</li>
-          <li>Pick your usual model in the chat&apos;s model menu, then press Cmd+V and Enter.</li>
-          <li>Claude writes the resume and a Word file named &quot;{resumeFileName(job.title)}.docx&quot; to download.</li>
+          <li>Press Copy for Claude. A new Claude chat opens in another tab. Press Cmd+V, then Enter.</li>
+          <li>Claude makes a PDF named &quot;{resumeFileName(job.title)}.pdf&quot;. Click it, then click Download.</li>
+          <li>On the application, upload it from Downloads (it&apos;s the newest file), then press Mark applied above.</li>
         </ol>
         <CopyForClaude prompt={prompt} />
         <details>
@@ -81,13 +81,13 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         </details>
       </section>
 
-      <section className="card space-y-2">
-        <h2 className="font-semibold">2. Keep the finished resume here (optional)</h2>
-        <p className="text-sm text-stone-600 dark:text-stone-400">
-          Paste Claude&apos;s resume text below and save it. The job moves to Ready to apply, and you can print it as a PDF.
+      <details className="card space-y-2" open={!!job.resume}>
+        <summary className="cursor-pointer font-semibold">Keep a copy of the resume text here (optional)</summary>
+        <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
+          Not needed to apply. If you want the text saved with this job, paste it below and save.
         </p>
         <ResumeEditor id={job.id} resume={job.resume ?? ""} fileName={resumeFileName(job.title)} />
-      </section>
+      </details>
 
       {job.description && (
         <details className="card">

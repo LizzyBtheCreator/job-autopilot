@@ -145,8 +145,8 @@ RULES (follow every one):
 18. Years of experience: only attach years to a field when my history supports that many years in it. 18+ years is my total professional experience; my people operations and HR work was 2010 to 2018 at Found Crisis Services. Do not write, for example, "18+ years of HR leadership".
 19. No repeats: each fact appears once on the resume. Do not restate the same duty or number in two bullets of the same role.
 
-OUTPUT:
-1. Show the resume as text in exactly this structure:
+OUTPUT (work fast: go straight to the file, no plan or draft in the chat):
+1. Create a PDF named "${file}.pdf" and give it to me to download. Build it with code so the text is real, selectable text that applicant tracking systems can read (not an image). Format: US Letter, one column, 0.6 to 0.75 inch margins, a clean standard font (Helvetica or similar) at 10 to 11 pt for body text, my name larger at the top, bold section headings, simple round bullets, no tables, text boxes, images, colors, icons, or headers and footers. Each role heading line shows the company, title, location, and dates. Do not show the resume text in the chat. Follow this structure:
 # ${CONTACT.name}
 ${CONTACT.location} | ${CONTACT.phone} | ${CONTACT.email}
 ## PROFESSIONAL SUMMARY
@@ -161,9 +161,9 @@ ${CONTACT.location} | ${CONTACT.phone} | ${CONTACT.email}
 ## EDUCATION
 - ${EDUCATION_LINE}
 
-2. Then create a Word document (.docx) named "${file}.docx" with the same resume, formatted for ATS: one column, standard section headings, simple bullets, no tables, text boxes, images, or headers and footers, and a clean professional font.
+2. Before handing me the file, check it against every rule above (especially no em or en dashes, no budgets or company financials, titles, and role order) and fix anything that breaks one.
 
-3. After the file, add a short note: which roles and certifications you left out and why, and any posting requirements I don't clearly meet, so I can prepare for them in an interview.`;
+3. After the file, add a short note of 3 to 5 lines: which roles and certifications you left out and why, and any posting requirements I don't clearly meet, so I can prepare for them in an interview.`;
 }
 
 const OWNER_WORDS = /\b(founder|co-founder|founded|owner|owner\/operator|proprietor|self-employed|my firm|my practice|my company)\b/i;
