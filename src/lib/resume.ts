@@ -68,7 +68,25 @@ export function companyFromPosting(posting: string | null): string | null {
   return name || null;
 }
 
-export async function fetchPosting(url: string): Promise<string> {
+// Starts a job description you pasted by hand, so it is never replaced by a fetch.
+export const PASTED_MARK = "Source: pasted from the job posting\n";
+
+// The job title the job site publishes with the posting.
+export function titleFromPosting(posting: string | null): string | null {
+  const m = posting?.match(/^Title: (.+)$/m);
+  return m ? decodeEntities(m[1]).trim() || null : null;
+}
+
+// True when the text reads like a job description rather than a site menu or error page.
+export function looksLikePosting(text: string | null): boolean {
+  if (text?.startsWith(PASTED_MARK)) return true;
+  if (!text || text.length < 400) return false;
+  if (/^(Title|Source): /m.test(text)) return true;
+  const hits = text.match(/responsibilit|qualification|requirement|experience|you will|what you.ll do|about the role|duties|preferred|benefits/gi);
+  return (hits?.length ?? 0) >= 4;
+}
+
+async function getHtml(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
       headers: {
@@ -79,12 +97,43 @@ export async function fetchPosting(url: string): Promise<string> {
       signal: AbortSignal.timeout(15000),
       cache: "no-store",
     });
-    if (!res.ok) return "";
-    const html = await res.text();
-    return (jsonLdPosting(html) ?? htmlToText(html)).slice(0, 40000);
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Returns the posting text, or "" when the page did not contain a real job description.
+// iCIMS and some other sites load the posting in an iframe on the same site, so that page is tried too.
+export async function fetchPosting(url: string): Promise<string> {
+  const candidates = [url];
+  try {
+    const u = new URL(url);
+    if (u.hostname.endsWith("icims.com") && !u.searchParams.has("in_iframe")) {
+      u.searchParams.set("in_iframe", "1");
+      candidates.unshift(u.toString());
+    }
   } catch {
     return "";
   }
+  for (let i = 0; i < candidates.length; i++) {
+    const html = await getHtml(candidates[i]);
+    if (!html) continue;
+    const ld = jsonLdPosting(html);
+    if (ld) return ld.slice(0, 40000);
+    const text = htmlToText(html);
+    if (looksLikePosting(text)) return text.slice(0, 40000);
+    const host = new URL(candidates[i]).hostname;
+    for (const m of html.matchAll(/<iframe[^>]+src="([^"]+)"/gi)) {
+      try {
+        const src = new URL(decodeEntities(m[1]), candidates[i]);
+        if (src.hostname === host && !candidates.includes(src.toString())) candidates.push(src.toString());
+      } catch {
+        // not a usable link
+      }
+    }
+  }
+  return "";
 }
 
 // ---------- The prompt you paste into a Claude chat ----------
@@ -107,7 +156,7 @@ Before writing, pick out the posting's exact keywords, required qualifications, 
 JOB: ${job.title} at ${job.company ?? "the employer"}
 LINK: ${job.url}
 
-FULL JOB POSTING:
+FULL JOB POSTING (this is the exact posting I am applying to; use only this text, and do not open the link or search the web for the posting):
 ${posting.slice(0, 30000)}
 
 ROLE FOCUS: ${CATEGORY_FOCUS[job.category]}
@@ -198,7 +247,7 @@ export function enforceRules(resume: string): { text: string; warnings: string[]
 export function postingFlags(job: Job, posting: string, settings: Settings): string[] {
   const flags: string[] = [];
   const text = `${job.title}\n${posting}`;
-  if (!posting) flags.push("Could not load the full posting; open the link and paste the description into the chat yourself");
+  if (!posting) flags.push("Could not load the full posting; paste the job description on the job page");
   const clearance = clearanceReason(text);
   if (clearance) flags.push(clearance);
   const notRemote = notRemoteReason(text);

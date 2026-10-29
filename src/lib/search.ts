@@ -88,6 +88,8 @@ function parseTitleAndCompany(rawTitle: string, url: string): { title: string; c
     company = company ?? at[2].trim();
   }
   if (title.toLowerCase().startsWith("job application for ")) title = title.slice(20);
+  // "Business Development Director in Remote" and similar location tails.
+  title = title.replace(/\s+(in|-)\s+(remote|united states|usa|us)\b.*$/i, "").replace(/\s*\((remote|us remote)[^)]*\)\s*$/i, "").trim();
 
   if (!company) {
     try {
@@ -97,7 +99,7 @@ function parseTitleAndCompany(rawTitle: string, url: string): { title: string; c
       if (/greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|breezy\.hr|jazzhr|bamboohr/.test(host) && seg) company = seg;
       else if (/myworkdayjobs\.com|icims\.com|applytojob\.com|paylocity|ultipro|recruitee/.test(host)) company = host.split(".")[0];
       else company = host.split(".").slice(-2, -1)[0] ?? host;
-      company = company.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      company = company.replace(/^(careers|jobs)[-_]/i, "").replace(/[-_](careers|jobs)$/i, "").replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     } catch {
       company = null;
     }

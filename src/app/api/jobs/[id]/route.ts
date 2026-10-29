@@ -1,6 +1,6 @@
 import { currentUserEmail, unauthorized } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { enforceRules } from "@/lib/resume";
+import { enforceRules, PASTED_MARK } from "@/lib/resume";
 import { RESPONSE_LABELS, type JobResponse, type JobStatus } from "@/lib/types";
 
 const ALLOWED: JobStatus[] = ["new", "needs_review", "ready", "applied", "dismissed"];
@@ -8,7 +8,7 @@ const ALLOWED: JobStatus[] = ["new", "needs_review", "ready", "applied", "dismis
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   if (!(await currentUserEmail())) return unauthorized();
   const { id } = await ctx.params;
-  const body = (await req.json()) as { status?: JobStatus; resume?: string; response?: JobResponse | null };
+  const body = (await req.json()) as { status?: JobStatus; resume?: string; response?: JobResponse | null; description?: string };
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.status) {
@@ -24,6 +24,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     update.response_at = body.response ? new Date().toISOString() : null;
   }
   const supabase = db();
+  if (typeof body.description === "string") {
+    const text = body.description.trim();
+    if (text.length < 200) return Response.json({ error: "That looks too short to be the full job description" }, { status: 400 });
+    update.description = PASTED_MARK + text.slice(0, 40000);
+    const { data: current } = await supabase.from("jobs").select("flags").eq("id", id).single();
+    update.flags = ((current?.flags as string[] | undefined) ?? []).filter((f) => !f.startsWith("Could not load"));
+  }
   if (typeof body.resume === "string") {
     // Pasted resumes and edits go through the same no-em-dash rule.
     const { text } = enforceRules(body.resume);

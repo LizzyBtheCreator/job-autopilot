@@ -89,6 +89,43 @@ export function ResponseButtons({ id, response }: { id: string; response: JobRes
   );
 }
 
+// Saves a job description copied from the posting page, for sites that can't be read automatically.
+export function PostingPaste({ id }: { id: string }) {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="space-y-2">
+      <textarea
+        className="input h-40 text-xs"
+        placeholder="Paste the full job description here"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div className="flex items-center gap-3">
+        <button
+          className="btn-primary"
+          disabled={busy || !text.trim()}
+          onClick={async () => {
+            setBusy(true);
+            const err = await call(`/api/jobs/${id}`, { method: "PATCH", body: JSON.stringify({ description: text }) });
+            setError(err);
+            setBusy(false);
+            if (!err) {
+              setText("");
+              router.refresh();
+            }
+          }}
+        >
+          Save job description
+        </button>
+        {error && <span className="text-sm text-red-600">{error}</span>}
+      </div>
+    </div>
+  );
+}
+
 export function ResumeEditor({ id, resume, fileName }: { id: string; resume: string; fileName: string }) {
   const router = useRouter();
   const [text, setText] = useState(resume);
