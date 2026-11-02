@@ -39,6 +39,33 @@ export function BidSearchButton() {
   );
 }
 
+export function ClearNewBidsButton({ count }: { count: number }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
+  if (!count) return null;
+  return (
+    <button
+      className="btn-secondary"
+      disabled={busy}
+      onClick={async () => {
+        if (!armed) {
+          setArmed(true);
+          return;
+        }
+        setBusy(true);
+        const err = await send("/api/bids/clear-new", "POST");
+        if (err) alert(err);
+        setBusy(false);
+        setArmed(false);
+        router.refresh();
+      }}
+    >
+      {armed ? "Click again to remove New and Check date bids you haven't priced" : "Clear New list"}
+    </button>
+  );
+}
+
 export function BidStatusButton({ id, status, label, primary }: { id: string; status: BidStatus; label: string; primary?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);

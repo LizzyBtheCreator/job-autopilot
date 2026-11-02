@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUserEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { BID_STATUS_LABELS, type Bid, type BidRun, type BidStatus } from "@/lib/bid-types";
-import { BidSearchButton, BidStatusButton } from "@/components/bids";
+import { BidSearchButton, BidStatusButton, ClearNewBidsButton } from "@/components/bids";
 import { Flags } from "@/components/badges";
 
 export const dynamic = "force-dynamic";
@@ -156,6 +156,9 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
           ))}
         </div>
 
+        {(status === "new" || status === "check") && (
+          <ClearNewBidsButton count={(counts.new ?? 0) + (counts.check ?? 0)} />
+        )}
         {status === "check" && (
           <p className="text-sm text-stone-600 dark:text-stone-400">
             These bids couldn&apos;t be read well enough to find a due date. Open each one: if it&apos;s still open, enter the due date on
