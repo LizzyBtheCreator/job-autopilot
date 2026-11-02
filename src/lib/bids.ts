@@ -13,7 +13,8 @@ import type { BidDropped, BidQuery, BidQueryStats, BidSettings } from "./bid-typ
 // 3. Every remaining new result's page or PDF is opened and read. Closed, awarded, or cancelled bids,
 //    pages that list many bids, documents from past years, and bids whose due date has passed are
 //    dropped. The due date is saved, and license, insurance, bond, and site visit requirements are flagged.
-// Only bids with a due date found on the page show as New. The rest wait under "Check date".
+// Only bids whose due date is found on the page and is today or later are saved. Everything else is
+// dropped with its reason, including bids that can't be read, so nothing expired is shown as open.
 // Every dropped result is kept with its reason so the search can be checked and tuned.
 
 // Government sites and the public bid portals that show one bid per page.
@@ -141,20 +142,19 @@ function parseDate(raw: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
-// The bid's due date: the latest deadline on the page that isn't a questions deadline,
-// within a year from now. Returns the date and the words around it.
+// The bid's due date: the first submission deadline on the page that isn't a questions or site
+// visit deadline. The first one is used because pages that list other bids lower down (related or
+// similar bids) carry those bids' dates too. Returns the date and the words it was found in.
 function findDueDate(text: string): { date: string; text: string } | null {
-  const now = today();
-  const limit = `${Number(now.slice(0, 4)) + 1}${now.slice(4)}`;
-  let best: { date: string; text: string } | null = null;
   for (const m of text.matchAll(DUE_RE)) {
-    const before = text.slice(Math.max(0, (m.index ?? 0) - 40), m.index ?? 0);
-    if (/question|inquir|clarification|pre-?bid|site visit|walk-?through/i.test(before + m[0].slice(0, 30))) continue;
+    // Only the words since the previous line or date belong to this deadline's label.
+    const before = text.slice(Math.max(0, (m.index ?? 0) - 40), m.index ?? 0).split(/\n|\d{4}/).pop() ?? "";
+    const label = before + m[0].slice(0, m[0].length - m[1].length);
+    if (/question|inquir|clarification|pre-?bid|site visit|walk-?through|posted|publish|issued/i.test(label)) continue;
     const date = parseDate(m[1]);
-    if (!date || date > limit) continue;
-    if (!best || date > best.date) best = { date, text: m[0].replace(/\s+/g, " ").trim().slice(0, 140) };
+    if (date) return { date, text: m[0].replace(/\s+/g, " ").trim().slice(0, 140) };
   }
-  return best;
+  return null;
 }
 
 function findState(text: string, url: string, states: string[]): string | null {
@@ -275,13 +275,7 @@ async function checkPage(url: string, title: string, snippet: string, states: st
   const read = await readBid(url);
 
   if (!read) {
-    const fallbackText = `${title}\n${snippet}`;
-    result.flags.push("Could not read the bid: open it to check the due date");
-    result.due = findDueDate(fallbackText);
-    if (result.due && result.due.date < today()) result.drop = `Due date passed (${result.due.date})`;
-    result.state = findState(fallbackText, url, states);
-    result.agency = agencyFrom(title, url, null);
-    if (!result.state) result.flags.push("State not confirmed");
+    result.drop = "Could not open or read the bid, so it can't be confirmed open";
     return result;
   }
 
@@ -318,7 +312,10 @@ async function checkPage(url: string, title: string, snippet: string, states: st
     result.drop = `Due date passed (${result.due.date})`;
     return result;
   }
-  if (!result.due) result.flags.push(`Due date not found ${pdf ? "in the PDF" : "on the page"}: check the bid`);
+  if (!result.due) {
+    result.drop = `No due date found ${pdf ? "in the PDF" : "on the page"}, so it can't be confirmed open`;
+    return result;
+  }
   result.state = findState(`${title}\n${text.slice(0, 20000)}`, url, states);
   if (!result.state) result.flags.push("State not confirmed");
 
@@ -359,15 +356,10 @@ export async function runBidSearch(): Promise<string> {
   const runId = run.id as string;
 
   const stateTerms = settings.states.length ? `(${settings.states.map((s) => `"${s}"`).join(" OR ")})` : "";
-  // Your Serper plan rejects Google's date filter, so the year goes in the search words instead.
-  // In November and December, next year counts too, since bids posted now are often due in January.
-  const now = today();
-  const year = Number(now.slice(0, 4));
-  const yearTerms = Number(now.slice(5, 7)) >= 11 ? `(${year} OR ${year + 1})` : `${year}`;
   const results = await Promise.all(
     queries.map(async (q) => {
       try {
-        const r = await serper(`(${settings.bid_terms}) (${q.query}) ${stateTerms} ${yearTerms}`.replace(/\s+/g, " ").trim(), settings);
+        const r = await serper(`(${settings.bid_terms}) (${q.query}) ${stateTerms}`.replace(/\s+/g, " ").trim(), settings);
         return { q, rows: r.rows, note: r.note, error: null as string | null };
       } catch (e) {
         return { q, rows: [] as SerperResult[], note: null, error: e instanceof Error ? e.message : String(e) };

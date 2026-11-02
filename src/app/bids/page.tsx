@@ -55,13 +55,17 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
   }
   const lastRun = (runs?.[0] ?? null) as BidRun | null;
   const counts: Record<string, number> = { all: statusRows?.length ?? 0 };
+  const todayKey = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
   for (const r of (statusRows ?? []) as { status: string; due_date: string | null }[]) {
+    if (r.status === "new" && r.due_date && r.due_date < todayKey) continue;
     const tab = r.status === "new" && !r.due_date ? "check" : r.status;
     counts[tab] = (counts[tab] ?? 0) + 1;
   }
 
   let q = supabase.from("bids").select("*").order("due_date", { ascending: true, nullsFirst: false }).limit(300);
-  if (status === "new") q = q.eq("status", "new").not("due_date", "is", null);
+  // New only shows bids that are still open today. Bids whose date has passed show under All.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  if (status === "new") q = q.eq("status", "new").gte("due_date", today);
   else if (status === "check") q = q.eq("status", "new").is("due_date", null);
   else if (status !== "all") q = q.eq("status", status);
   if (runFilter && lastRun && runFilter === lastRun.id) q = q.eq("last_run_id", runFilter);
@@ -161,8 +165,8 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
         )}
         {status === "check" && (
           <p className="text-sm text-stone-600 dark:text-stone-400">
-            These bids couldn&apos;t be read well enough to find a due date. Open each one: if it&apos;s still open, enter the due date on
-            its Price it page and it moves to New. If it&apos;s old or closed, dismiss it.
+            These came from earlier searches, before bids without a confirmed due date were left out. Searches no longer add
+            bids here. Press Clear New list to remove them.
           </p>
         )}
         {bids.length === 0 ? (
