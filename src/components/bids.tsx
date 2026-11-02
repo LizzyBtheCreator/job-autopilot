@@ -32,7 +32,7 @@ export function BidSearchButton() {
           router.refresh();
         }}
       >
-        {busy ? "Searching and checking bid pages... (up to 2 minutes)" : "Find bids"}
+        {busy ? "Checking the state bid portals... (about a minute)" : "Find bids"}
       </button>
       {error && <span className="text-sm text-red-600">{error}</span>}
     </div>
@@ -170,16 +170,13 @@ export function BidPricing({
 export function BidSettingsForm({ settings }: { settings: BidSettings }) {
   const router = useRouter();
   const [states, setStates] = useState(settings.states.join(", "));
-  const [terms, setTerms] = useState(settings.bid_terms);
-  const [recency, setRecency] = useState(settings.recency);
-  const [perQuery, setPerQuery] = useState(settings.results_per_query);
   const [msg, setMsg] = useState<string | null>(null);
   return (
     <form
       className="card space-y-4"
       onSubmit={async (e) => {
         e.preventDefault();
-        const err = await send("/api/bids/settings", "POST", { states, bid_terms: terms, recency, results_per_query: perQuery });
+        const err = await send("/api/bids/settings", "POST", { states });
         setMsg(err ?? "Saved");
         router.refresh();
       }}
@@ -187,29 +184,8 @@ export function BidSettingsForm({ settings }: { settings: BidSettings }) {
       <label className="block text-sm">
         States (full names, separated by commas)
         <input className="input mt-1" value={states} onChange={(e) => setStates(e.target.value)} placeholder="North Carolina, South Carolina, Georgia" />
-        <span className="text-xs text-stone-500">Leave empty to search every state. Three or fewer keeps results focused.</span>
+        <span className="text-xs text-stone-500">Connected now: North Carolina and Georgia. Other states are listed as not connected after a search.</span>
       </label>
-      <label className="block text-sm">
-        Bid wording (added to every search)
-        <textarea className="input mt-1 font-mono text-xs" rows={2} value={terms} onChange={(e) => setTerms(e.target.value)} />
-      </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm">
-          Posted within
-          <select className="input mt-1" value={recency} onChange={(e) => setRecency(e.target.value as BidSettings["recency"])}>
-            <option value="d">Past day</option>
-            <option value="w">Past week</option>
-            <option value="m">Past month</option>
-            <option value="y">Past year</option>
-            <option value="any">Any time</option>
-          </select>
-        </label>
-        <label className="block text-sm">
-          Results per search
-          <input className="input mt-1" type="number" min={10} max={100} step={10} value={perQuery} onChange={(e) => setPerQuery(Number(e.target.value))} />
-          <span className="text-xs text-stone-500">More results use more Serper credits.</span>
-        </label>
-      </div>
       <div className="flex items-center gap-3">
         <button className="btn-primary">Save settings</button>
         {msg && <span className="text-sm text-stone-500">{msg}</span>}
@@ -230,7 +206,7 @@ function BidQueryRow({ q, onDone }: { q: Partial<BidQuery>; onDone: () => void }
           <input type="checkbox" checked={row.enabled ?? true} onChange={(e) => setRow({ ...row, enabled: e.target.checked })} /> On
         </label>
       </div>
-      <input className="input font-mono text-xs" placeholder='mowing OR "grounds maintenance"' value={row.query ?? ""} onChange={(e) => setRow({ ...row, query: e.target.value })} />
+      <input className="input font-mono text-xs" placeholder='mowing OR "grounds maintenance" OR landscaping' value={row.query ?? ""} onChange={(e) => setRow({ ...row, query: e.target.value })} />
       <div className="flex items-center gap-2">
         <button
           className="btn-primary"

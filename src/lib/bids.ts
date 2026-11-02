@@ -1,126 +1,32 @@
 import "server-only";
-import { extractText, getDocumentProxy } from "unpdf";
 import { db } from "./db";
 import type { BidDropped, BidQuery, BidQueryStats, BidSettings } from "./bid-types";
 
-// State and local bid search. It shares nothing with the job search except the Serper key.
+// State and local bid search. It shares nothing with the job search.
 //
-// How a result becomes a bid:
-// 1. Google (through Serper) is searched for bid wording + a service + your states, on government
-//    sites and the public bid portals.
-// 2. From the search result alone, federal sites, award and results pages, lists of many bids, and
-//    results from past years are dropped.
-// 3. Every remaining new result's page or PDF is opened and read. Closed, awarded, or cancelled bids,
-//    pages that list many bids, documents from past years, and bids whose due date has passed are
-//    dropped. The due date is saved, and license, insurance, bond, and site visit requirements are flagged.
-// Only bids whose due date is found on the page and is today or later are saved. Everything else is
-// dropped with its reason, including bids that can't be read, so nothing expired is shown as open.
-// Every dropped result is kept with its reason so the search can be checked and tuned.
+// Bids come straight from the states' own bid portals, which list open bids with their closing
+// dates and status. Google is not used: its results were mostly expired bids.
+//   North Carolina: eVP (evp.nc.gov), state agencies, community colleges, local governments, schools
+//   Georgia: Georgia Procurement Registry (pur.doas.ga.gov), state, county, city, and K-12
+// Only bids the portal marks Open, with a closing date of today or later, are saved.
+// Each service search is a set of words matched against bid titles: words joined by OR, phrases in quotes.
 
-// Government sites and the public bid portals that show one bid per page.
-const BID_SITES = "(site:gov OR site:us OR site:bidnetdirect.com OR site:bonfirehub.com OR site:opengov.com OR site:demandstar.com)";
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 
-// Federal sites. Your bids are state and local only.
-const FEDERAL_HOSTS = /(^|\.)(sam\.gov|fbo\.gov|gsa\.gov|usda\.gov|va\.gov|nps\.gov|doi\.gov|dhs\.gov|fema\.gov|hud\.gov|nih\.gov|cdc\.gov|epa\.gov|usace\.army\.mil|fed\.us|usajobs\.gov|grants\.gov|beta\.sam\.gov|highergov\.com|govtribe\.com)$|\.mil$/i;
-const FEDERAL_TEXT = /\b(sam\.gov|federal acquisition regulation|FAR 52\.|department of veterans affairs|U\.S\. Army|U\.S\. Navy|U\.S\. Air Force|army corps of engineers|national park service|forest service|USDA|federal bureau of prisons)\b/i;
-
-const RESULTS_PAGE = /\b(bid tab(ulation)?s?|bid results|award(ed)? notice|notice of (intent to )?award|intent to award|awarded to|bid award)\b/i;
-const LIST_TITLE = /^(current|open|active|available|upcoming)?\s*(bids?|bid opportunities|bids? (and|&) (rfps?|proposals|quotes)|solicitations|procurement( opportunities)?|purchasing( (department|division))?|rfps?|business opportunities|contracting opportunities)\b|\b(bids? (and|&) rfps?|bid information|bid opportunities|current bids|open bids|procurement opportunities|open solicitations)\s*$/i;
-// Search results that are documents about something else, not a bid.
-const NOT_A_BID_TITLE = /\b(agenda|minutes|manual|newsletter|annual report|budget|request ?tracker|news|update|press release|ordinance|resolution|audit)\b/i;
-const CLOSED_PAGE = /\b(status:?\s*(closed|awarded|cancel+ed|under evaluation)|under evaluation|(bid|solicitation|rfq|ifb|itb) (is |has been )?(closed|awarded|cancel+ed)|this (bid|solicitation|opportunity) (is |has )?(closed|been awarded|been cancel+ed))\b/i;
-
-const MONTHS = "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
-const DATE = `(?:(?:${MONTHS})\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}|\\d{1,2}/\\d{1,2}/\\d{2,4}|\\d{4}-\\d{2}-\\d{2})`;
-const DUE_KEY = "(?:due|deadline|closing|closes|close date|opening date|bid opening|received (?:by|no later than|until|prior to)|submitted (?:by|no later than)|submission)";
-const DUE_RE = new RegExp(`${DUE_KEY}[\\s\\S]{0,80}?(${DATE})`, "gi");
-
-const STATE_ABBR: Record<string, string> = {
-  Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA", Colorado: "CO", Connecticut: "CT",
-  Delaware: "DE", Florida: "FL", Georgia: "GA", Hawaii: "HI", Idaho: "ID", Illinois: "IL", Indiana: "IN", Iowa: "IA",
-  Kansas: "KS", Kentucky: "KY", Louisiana: "LA", Maine: "ME", Maryland: "MD", Massachusetts: "MA", Michigan: "MI",
-  Minnesota: "MN", Mississippi: "MS", Missouri: "MO", Montana: "MT", Nebraska: "NE", Nevada: "NV", "New Hampshire": "NH",
-  "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", Ohio: "OH",
-  Oklahoma: "OK", Oregon: "OR", Pennsylvania: "PA", "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD",
-  Tennessee: "TN", Texas: "TX", Utah: "UT", Vermont: "VT", Virginia: "VA", Washington: "WA", "West Virginia": "WV",
-  Wisconsin: "WI", Wyoming: "WY",
+export const SOURCES: Record<string, { state: string; name: string }> = {
+  nc_evp: { state: "North Carolina", name: "NC eVP" },
+  ga_gpr: { state: "Georgia", name: "Georgia Procurement Registry" },
 };
 
-interface SerperResult {
-  title?: string;
-  link?: string;
-  snippet?: string;
-}
-
-async function serperCall(body: Record<string, unknown>): Promise<{ ok: true; rows: SerperResult[] } | { ok: false; status: number; text: string }> {
-  const key = process.env.SERPER_API_KEY;
-  if (!key) throw new Error("SERPER_API_KEY is not set in Vercel");
-  const res = await fetch("https://google.serper.dev/search", {
-    method: "POST",
-    headers: { "X-API-KEY": key, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-  const text = await res.text();
-  if (!res.ok) return { ok: false, status: res.status, text: text.slice(0, 200) };
-  const data = JSON.parse(text) as { organic?: SerperResult[] };
-  return { ok: true, rows: data.organic ?? [] };
-}
-
-// Serper's free plan rejects some options. Try the most precise request first and step down.
-async function serper(base: string, settings: BidSettings): Promise<{ rows: SerperResult[]; note: string | null }> {
-  const precise: Record<string, unknown> = { q: `${base} ${BID_SITES}`, num: settings.results_per_query, gl: "us", hl: "en" };
-  if (settings.recency !== "any") precise.tbs = `qdr:${settings.recency}`;
-  const attempts: { body: Record<string, unknown>; note: string | null }[] = [
-    { body: precise, note: null },
-    { body: { q: `${base} ${BID_SITES}`, num: 10 }, note: "Serper plan limit: ran without the date filter, 10 results" },
-    { body: { q: `${base} -site:sam.gov`, num: 10 }, note: "Serper plan limit: searched the open web instead of government and bid sites" },
-  ];
-  let last = "";
-  for (const a of attempts) {
-    const r = await serperCall(a.body);
-    if (r.ok) return { rows: r.rows, note: a.note };
-    last = `Serper returned ${r.status}: ${r.text}`;
-    if (!(r.status === 400 && /not allowed/i.test(r.text))) break;
-  }
-  throw new Error(last);
-}
-
-function normalizeUrl(raw: string): string {
-  try {
-    const u = new URL(raw);
-    u.hash = "";
-    for (const k of [...u.searchParams.keys()]) {
-      if (/^(utm_|ref$|src$|source$|gclid$|fbclid$)/i.test(k)) u.searchParams.delete(k);
-    }
-    return u.toString();
-  } catch {
-    return raw;
-  }
-}
-
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
-}
-
-function htmlToText(html: string): string {
-  return decodeEntities(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<(br|\/p|\/li|\/h\d|\/div|\/tr|\/td|\/th)[^>]*>/gi, "\n")
-      .replace(/<[^>]+>/g, " "),
-  )
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n\s*\n+/g, "\n")
-    .trim();
+interface PortalBid {
+  url: string;
+  title: string;
+  agency: string | null;
+  state: string;
+  dueDate: string; // YYYY-MM-DD
+  dueText: string;
+  status: string;
+  detail: string | null;
 }
 
 // Today's date in Eastern time, as YYYY-MM-DD.
@@ -128,220 +34,173 @@ function today(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 }
 
-// Turns "November 14, 2026", "Nov. 14th 2026", "11/14/2026", "11/14/26", or "2026-11-14" into YYYY-MM-DD.
-function parseDate(raw: string): string | null {
-  const s = raw.replace(/(\d)(st|nd|rd|th)\b/i, "$1").replace(/\./g, "").trim();
-  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-  if (m) {
-    const y = m[3].length === 2 ? `20${m[3]}` : m[3];
-    return `${y}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
-  }
-  const d = new Date(`${s} 12:00 UTC`);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+// '"grounds maintenance" OR mowing' -> ["grounds maintenance", "mowing"]
+export function searchTerms(query: string): string[] {
+  return query
+    .split(/\s+OR\s+/i)
+    .map((t) => t.replace(/["()]/g, "").trim().toLowerCase())
+    .filter(Boolean);
 }
 
-// The bid's due date: the first submission deadline on the page that isn't a questions or site
-// visit deadline. The first one is used because pages that list other bids lower down (related or
-// similar bids) carry those bids' dates too. Returns the date and the words it was found in.
-function findDueDate(text: string): { date: string; text: string } | null {
-  for (const m of text.matchAll(DUE_RE)) {
-    // Only the words since the previous line or date belong to this deadline's label.
-    const before = text.slice(Math.max(0, (m.index ?? 0) - 40), m.index ?? 0).split(/\n|\d{4}/).pop() ?? "";
-    const label = before + m[0].slice(0, m[0].length - m[1].length);
-    if (/question|inquir|clarification|pre-?bid|site visit|walk-?through|posted|publish|issued/i.test(label)) continue;
-    const date = parseDate(m[1]);
-    if (date) return { date, text: m[0].replace(/\s+/g, " ").trim().slice(0, 140) };
-  }
-  return null;
+function matches(title: string, terms: string[]): boolean {
+  return terms.some((term) =>
+    new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]+")}`, "i").test(title),
+  );
 }
 
-function findState(text: string, url: string, states: string[]): string | null {
-  for (const name of states) {
-    const abbr = STATE_ABBR[name];
-    if (new RegExp(`\\b${name}\\b`, "i").test(text)) return name;
-    if (abbr && new RegExp(`(,\\s*|\\b)${abbr}\\b(\\s+\\d{5})?`).test(text.replace(/\bOR\b/g, ""))) return name;
-    try {
-      const host = new URL(url).hostname;
-      if (abbr && new RegExp(`(^|\\.)${abbr.toLowerCase()}\\.(gov|us)$|\\.${abbr.toLowerCase()}\\.us$`).test(host)) return name;
-    } catch {
-      // ignore
-    }
-  }
-  return null;
+// Cookies from a response, as a Cookie header value.
+function cookiesFrom(res: Response): string {
+  return res.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
 }
 
-// A readable agency name from the page title or the web address.
-function agencyFrom(title: string, url: string, siteName: string | null): string | null {
-  if (siteName) return siteName.trim();
-  const parts = title.split(/\s+[|\-–]\s+/);
-  if (parts.length > 1) return parts[parts.length - 1].trim();
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
-    if (/bidnetdirect|bonfirehub|opengov|demandstar/.test(host)) return null;
-    return host.split(".").slice(0, -1).join(" ").replace(/\b\w/g, (c) => c.toUpperCase());
-  } catch {
-    return null;
-  }
+// ---------- North Carolina eVP ----------
+
+interface NcSession {
+  cookie: string;
+  token: string;
+  config: string;
 }
 
-function cleanTitle(title: string): string {
-  return title.replace(/\s*\.\.\.$/, "").split(/\s+\|\s+/)[0].trim();
+async function ncSession(): Promise<NcSession> {
+  const page = await fetch("https://evp.nc.gov/solicitations/", { headers: { "User-Agent": UA }, cache: "no-store", signal: AbortSignal.timeout(20000) });
+  if (!page.ok) throw new Error(`NC eVP returned ${page.status}`);
+  const html = await page.text();
+  const layouts = html.match(/data-view-layouts="([^"]+)"/)?.[1];
+  if (!layouts) throw new Error("NC eVP page changed: bid list settings not found");
+  const decoded = JSON.parse(Buffer.from(layouts.replace(/&quot;/g, '"'), "base64").toString("utf8")) as { Base64SecureConfiguration: string }[];
+  let cookie = cookiesFrom(page);
+  const tokRes = await fetch("https://evp.nc.gov/_layout/tokenhtml", { headers: { "User-Agent": UA, Cookie: cookie }, cache: "no-store", signal: AbortSignal.timeout(20000) });
+  const tokCookie = cookiesFrom(tokRes);
+  if (tokCookie) cookie = [cookie, tokCookie].filter(Boolean).join("; ");
+  const token = (await tokRes.text()).match(/value="([^"]+)"/)?.[1];
+  if (!token) throw new Error("NC eVP page changed: request token not found");
+  return { cookie, token, config: decoded[0].Base64SecureConfiguration };
 }
 
-function yearsIn(text: string): number[] {
-  return [...text.matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
+function ncDate(display: string): string | null {
+  const m = display.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` : null;
 }
 
-// From the search result alone: reasons to drop it before opening the page.
-function snippetReason(url: string, title: string, snippet: string): string | null {
-  let host = "";
-  let path = "";
-  try {
-    const u = new URL(url);
-    host = u.hostname;
-    path = u.pathname;
-  } catch {
-    return "Not a valid link";
-  }
-  const text = `${title} ${snippet}`;
-  if (FEDERAL_HOSTS.test(host)) return `Federal site (${host})`;
-  if (FEDERAL_TEXT.test(text)) return "Federal bid";
-  if (RESULTS_PAGE.test(title)) return "Award or results page, not an open bid";
-  if (/cancel+ed/i.test(`${title} ${path}`)) return "Cancelled bid";
-  if (NOT_A_BID_TITLE.test(cleanTitle(title))) return "Not a bid (agenda, manual, news, or similar)";
-  // Many sites put the year in the file's address, e.g. /2021/01/ or -2023-.
-  const urlYears = [...decodeURIComponent(path).matchAll(/(?:^|[/_\-])(20[12]\d)(?=[/_\-.]|$)/g)].map((m) => Number(m[1]));
-  if (urlYears.length && Math.max(...urlYears) < Number(today().slice(0, 4))) return `From an earlier year (${Math.max(...urlYears)}, in the link)`;
-  const isPdf = /\.pdf$/i.test(path);
-  if (!isPdf && LIST_TITLE.test(cleanTitle(title)) && !/\d{3,}/.test(path)) return "List of many bids, not a single bid";
-  const years = yearsIn(text);
-  const thisYear = Number(today().slice(0, 4));
-  if (years.length && Math.max(...years) < thisYear) return `From an earlier year (${Math.max(...years)})`;
-  return null;
+// "WAKE TECHNICAL COMMUNITY COLLEGE" -> "Wake Technical Community College"
+function titleCase(s: string): string {
+  return s === s.toUpperCase() ? s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : s;
 }
 
-interface PageCheck {
-  drop: string | null;
-  due: { date: string; text: string } | null;
-  state: string | null;
-  agency: string | null;
-  flags: string[];
-}
-
-const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
-const MAX_PDF_BYTES = 8_000_000;
-
-// The text of the first pages of a PDF, where the due date and requirements are.
-async function pdfText(bytes: Uint8Array): Promise<string | null> {
-  try {
-    const pdf = await getDocumentProxy(bytes);
-    const { text } = await extractText(pdf, { mergePages: false });
-    return (text as string[]).slice(0, 6).join("\n");
-  } catch {
-    return null;
-  }
-}
-
-// Opens the bid's page or PDF and returns its text, or null when it can't be read.
-async function readBid(url: string): Promise<{ text: string; html: string | null; pdf: boolean } | null> {
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8" },
-      redirect: "follow",
-      signal: AbortSignal.timeout(10000),
-      cache: "no-store",
+async function ncSearch(session: NcSession, term: string): Promise<PortalBid[]> {
+  const res = await fetch("https://evp.nc.gov/_services/entity-grid-data.json/863ea987-6d3e-ed11-9daf-001dd805ec0b", {
+    method: "POST",
+    headers: {
+      "User-Agent": UA,
+      "Content-Type": "application/json; charset=utf-8",
+      "X-Requested-With": "XMLHttpRequest",
+      __RequestVerificationToken: session.token,
+      Cookie: session.cookie,
+    },
+    body: JSON.stringify({
+      base64SecureConfiguration: session.config,
+      sortExpression: "evp_opendate DESC",
+      search: term,
+      page: 1,
+      pageSize: 50,
+      pagingCookie: "",
+      filter: null,
+      metaFilter: null,
+      nlSearch: false,
+      timezoneOffset: 300,
+      customParameters: [],
+      entityName: "evp_solicitation",
+      entityId: null,
+    }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`NC eVP search returned ${res.status}`);
+  const data = (await res.json()) as { Records?: { Id: string; Attributes: { Name: string; DisplayValue?: string }[] }[] };
+  const out: PortalBid[] = [];
+  for (const r of data.Records ?? []) {
+    const a = Object.fromEntries(r.Attributes.map((x) => [x.Name, x.DisplayValue ?? ""]));
+    const due = ncDate(a.evp_opendate ?? "");
+    if (!due) continue;
+    out.push({
+      url: `https://evp.nc.gov/solicitations/details/?id=${r.Id}`,
+      title: a.evp_name || a.evp_solicitationnbr || "Untitled bid",
+      agency: a.owningbusinessunit ? titleCase(a.owningbusinessunit) : null,
+      state: "North Carolina",
+      dueDate: due,
+      dueText: `Bids open ${a.evp_opendate} (NC eVP)`,
+      status: a.statuscode ?? "",
+      detail: a.evp_description && a.evp_description !== a.evp_name ? a.evp_description : null,
     });
-    if (!res.ok) return null;
-    const type = res.headers.get("content-type") ?? "";
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    const isPdf = /pdf/i.test(type) || (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46);
-    if (isPdf) {
-      if (bytes.length > MAX_PDF_BYTES) return null;
-      const text = await pdfText(bytes);
-      return text ? { text, html: null, pdf: true } : null;
-    }
-    const html = new TextDecoder().decode(bytes);
-    return { text: htmlToText(html), html, pdf: false };
-  } catch {
-    return null;
   }
+  return out;
 }
 
-// Opens the bid's page or PDF and reads it. Bids that can't be read are kept with a flag.
-async function checkPage(url: string, title: string, snippet: string, states: string[]): Promise<PageCheck> {
-  const result: PageCheck = { drop: null, due: null, state: null, agency: null, flags: [] };
-  const read = await readBid(url);
+// ---------- Georgia Procurement Registry ----------
 
-  if (!read) {
-    result.drop = "Could not open or read the bid, so it can't be confirmed open";
-    return result;
-  }
-
-  const { text, html, pdf } = read;
-  const siteName = html?.match(/<meta[^>]+property="og:site_name"[^>]+content="([^"]+)"/i)?.[1] ?? null;
-  result.agency = agencyFrom(title, url, siteName ? decodeEntities(siteName) : null);
-  if (FEDERAL_TEXT.test(text.slice(0, 3000))) {
-    result.drop = "Federal bid (found on the page)";
-    return result;
-  }
-  if (CLOSED_PAGE.test(text)) {
-    result.drop = "Bid is closed, awarded, cancelled, or under evaluation";
-    return result;
-  }
-  if (!pdf) {
-    const numbers = new Set(
-      [...text.matchAll(/\b(?:bid|solicitation|rfq|ifb|itb|rfp)\s*(?:#|no\.?|number)\s*:?\s*([\w-]{3,})/gi)].map((m) => m[1].toLowerCase()),
-    );
-    if (numbers.size > 4) {
-      result.drop = `List of many bids (${numbers.size} bid numbers on the page), not a single bid`;
-      return result;
-    }
-  } else {
-    // A bid document only mentions past years if it is from a past year.
-    const years = yearsIn(text.slice(0, 15000));
-    const thisYear = Number(today().slice(0, 4));
-    if (years.length && Math.max(...years) < thisYear) {
-      result.drop = `From an earlier year (latest year in the document: ${Math.max(...years)})`;
-      return result;
-    }
-  }
-  result.due = findDueDate(text);
-  if (result.due && result.due.date < today()) {
-    result.drop = `Due date passed (${result.due.date})`;
-    return result;
-  }
-  if (!result.due) {
-    result.drop = `No due date found ${pdf ? "in the PDF" : "on the page"}, so it can't be confirmed open`;
-    return result;
-  }
-  result.state = findState(`${title}\n${text.slice(0, 20000)}`, url, states);
-  if (!result.state) result.flags.push("State not confirmed");
-
-  if (/(must|shall)\s+(hold|possess|have|maintain)\s+(a\s+)?(valid\s+|current\s+|active\s+)?[\w\s-]{0,40}licen[sc]e/i.test(text)) {
-    result.flags.push("May require the bidder to hold a license: check the bid");
-  }
-  if (/general liability|certificate of insurance|workers.? comp/i.test(text)) result.flags.push("Insurance required");
-  if (/bid bond|performance bond|payment bond|bid security/i.test(text)) result.flags.push("Bond may be required");
-  if (/mandatory\s+(pre-?bid|site visit|walk-?through|pre-?proposal)/i.test(text)) result.flags.push("Mandatory pre-bid meeting or site visit");
-  return result;
+interface GaRow {
+  esourceNumber: string;
+  sourceId: string;
+  title: string;
+  agencyName: string | null;
+  closingDate: string;
+  closingDateStr: string;
+  status: string;
+  governmentType: string | null;
+  bidProcessType: string | null;
 }
+
+// Georgia's registry has a few hundred open bids at a time, so all of them are read once per run
+// and matched against each search's words.
+async function gaOpenBids(): Promise<PortalBid[]> {
+  const home = await fetch("https://pur.doas.ga.gov/gpr/index", { headers: { "User-Agent": UA }, cache: "no-store", signal: AbortSignal.timeout(20000) });
+  const cookie = cookiesFrom(home);
+  const out: PortalBid[] = [];
+  const pageSize = 250;
+  for (let start = 0, total = Infinity; start < total && start < 2000; start += pageSize) {
+    const body = new URLSearchParams({
+      draw: "1", start: String(start), length: String(pageSize), responseType: "ALL", eventStatus: "OPEN",
+      eventIdTitle: "", govType: "ALL", govEntity: "", catType: "ALL", eventProcessType: "ALL", dateRangeType: "",
+      rangeStartDate: "", rangeEndDate: "", isReset: "true", persisted: "false", refreshSearchData: "true",
+      "order[0][column]": "5", "order[0][dir]": "asc",
+    });
+    const res = await fetch("https://pur.doas.ga.gov/gpr/eventSearch", {
+      method: "POST",
+      headers: { "User-Agent": UA, "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded", Cookie: cookie },
+      body,
+      cache: "no-store",
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) throw new Error(`Georgia registry returned ${res.status}`);
+    const data = (await res.json()) as { recordsTotal?: number; data?: GaRow[] | null };
+    total = data.recordsTotal ?? 0;
+    for (const r of data.data ?? []) {
+      out.push({
+        url: `https://pur.doas.ga.gov/gpr/eventDetails?eSourceNumber=${encodeURIComponent(r.esourceNumber)}&sourceSystemType=${encodeURIComponent(r.sourceId)}`,
+        title: r.title,
+        agency: r.agencyName,
+        state: "Georgia",
+        dueDate: r.closingDate,
+        dueText: `Closes ${r.closingDateStr} (Georgia Procurement Registry)`,
+        status: r.status,
+        detail: [r.governmentType, r.bidProcessType].filter(Boolean).join(" · ") || null,
+      });
+    }
+    if (!data.data?.length) break;
+  }
+  return out;
+}
+
+// ---------- Running a search ----------
 
 export async function loadBidSettings(): Promise<BidSettings> {
   const { data, error } = await db().from("bid_settings").select("*").eq("id", 1).single();
   if (error) throw new Error(`Could not read bid_settings: ${error.message}. Did you run supabase/bids.sql?`);
   return data as BidSettings;
 }
-
-// Runs the given promises a few at a time.
-async function inBatches<T, R>(items: T[], size: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = [];
-  for (let i = 0; i < items.length; i += size) out.push(...(await Promise.all(items.slice(i, i + size).map(fn))));
-  return out;
-}
-
-const MAX_PAGE_CHECKS = 60;
 
 export async function runBidSearch(): Promise<string> {
   const supabase = db();
@@ -351,89 +210,107 @@ export async function runBidSearch(): Promise<string> {
   const queries = (queryRows ?? []) as BidQuery[];
   if (!queries.length) throw new Error("No bid searches are turned on. Turn some on in Bid settings.");
 
+  const wanted = new Set(settings.states.map((s) => s.toLowerCase()));
+  const sources = Object.entries(SOURCES).filter(([, s]) => !wanted.size || wanted.has(s.state.toLowerCase()));
+  if (!sources.length) throw new Error("None of your states has a connected bid portal yet. Connected: North Carolina, Georgia.");
+
   const { data: run, error: runErr } = await supabase.from("bid_runs").insert({}).select("id").single();
   if (runErr) throw new Error(`Could not start bid search: ${runErr.message}`);
   const runId = run.id as string;
 
-  const stateTerms = settings.states.length ? `(${settings.states.map((s) => `"${s}"`).join(" OR ")})` : "";
-  const results = await Promise.all(
-    queries.map(async (q) => {
+  const stats = new Map<string, BidQueryStats>(
+    queries.map((q) => [q.label, { label: q.label, query: q.query, returned: 0, new: 0, seen_before: 0, dropped: 0, error: null, note: null }]),
+  );
+  const dropped: BidDropped[] = [];
+  const errors: string[] = [];
+  const found = new Map<string, { bid: PortalBid; label: string }>();
+  const now = today();
+
+  const take = (bid: PortalBid, label: string) => {
+    const st = stats.get(label)!;
+    st.returned++;
+    const drop = (reason: string) => {
+      st.dropped++;
+      dropped.push({ query_label: label, title: bid.title, url: bid.url, reason });
+    };
+    if (found.has(bid.url)) return drop("Also matched an earlier search in this run");
+    if (!/^open$/i.test(bid.status)) return drop(`Portal status is ${bid.status || "not Open"}`);
+    if (bid.dueDate < now) return drop(`Closing date passed (${bid.dueDate})`);
+    found.set(bid.url, { bid, label });
+  };
+
+  await Promise.all(
+    sources.map(async ([key, src]) => {
       try {
-        const r = await serper(`(${settings.bid_terms}) (${q.query}) ${stateTerms}`.replace(/\s+/g, " ").trim(), settings);
-        return { q, rows: r.rows, note: r.note, error: null as string | null };
+        if (key === "nc_evp") {
+          const session = await ncSession();
+          // NC searches on its own side, one request per search word.
+          for (const q of queries) {
+            const terms = searchTerms(q.query);
+            const seen = new Set<string>();
+            for (const term of terms) {
+              for (const bid of await ncSearch(session, term)) {
+                if (seen.has(bid.url) || !matches(bid.title, terms)) continue;
+                seen.add(bid.url);
+                take(bid, q.label);
+              }
+            }
+          }
+        } else if (key === "ga_gpr") {
+          const all = await gaOpenBids();
+          for (const q of queries) {
+            const terms = searchTerms(q.query);
+            for (const bid of all) if (matches(bid.title, terms)) take(bid, q.label);
+          }
+        }
       } catch (e) {
-        return { q, rows: [] as SerperResult[], note: null, error: e instanceof Error ? e.message : String(e) };
+        errors.push(`${src.name}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }),
   );
 
-  const stats = new Map<string, BidQueryStats>();
-  const dropped: BidDropped[] = [];
-  const seen = new Set<string>();
-  const candidates: { url: string; title: string; snippet: string; label: string }[] = [];
-  let totalReturned = 0;
+  // Earlier versions searched Google, and most of those results were expired. Remove the ones you
+  // haven't priced or noted. Bids you have worked on are never removed.
+  await supabase
+    .from("bids")
+    .delete()
+    .eq("status", "new")
+    .is("contractor_cost", null)
+    .is("bid_price", null)
+    .is("notes", null)
+    .not("url", "like", "https://evp.nc.gov/solicitations/details/%")
+    .not("url", "like", "https://pur.doas.ga.gov/gpr/eventDetails%");
 
-  for (const { q, rows, note, error } of results) {
-    const st: BidQueryStats = { label: q.label, query: q.query, returned: rows.length, new: 0, seen_before: 0, dropped: 0, error, note };
-    stats.set(q.label, st);
-    totalReturned += rows.length;
-    for (const r of rows) {
-      const url = r.link ? normalizeUrl(r.link) : "";
-      const title = r.title ?? "";
-      const snippet = r.snippet ?? "";
-      const drop = (reason: string) => {
-        st.dropped++;
-        dropped.push({ query_label: q.label, title, url, reason });
-      };
-      if (!url || !title) { drop("Missing link or title"); continue; }
-      if (seen.has(url)) { drop("Duplicate of a result from an earlier search in this run"); continue; }
-      seen.add(url);
-      const reason = snippetReason(url, title, snippet);
-      if (reason) { drop(reason); continue; }
-      candidates.push({ url, title, snippet, label: q.label });
-    }
-  }
-
-  // Bids already in your list are shown again, not re-checked.
+  // Bids already in your list get their closing date refreshed, not added again.
+  const urls = [...found.keys()];
   const existing = new Set<string>();
-  if (candidates.length) {
-    const { data, error } = await supabase.from("bids").select("url").in("url", candidates.map((c) => c.url));
+  if (urls.length) {
+    const { data, error } = await supabase.from("bids").select("url").in("url", urls);
     if (error) throw new Error(`Could not check existing bids: ${error.message}`);
     for (const e of data ?? []) existing.add((e as { url: string }).url);
   }
-  const old = candidates.filter((c) => existing.has(c.url));
-  for (const c of old) stats.get(c.label)!.seen_before++;
-  if (old.length) {
-    await supabase.from("bids").update({ last_seen_at: new Date().toISOString(), last_run_id: runId }).in("url", old.map((c) => c.url));
-  }
-
-  const fresh = candidates.filter((c) => !existing.has(c.url));
-  const toCheck = fresh.slice(0, MAX_PAGE_CHECKS);
-  for (const c of fresh.slice(MAX_PAGE_CHECKS)) {
-    stats.get(c.label)!.dropped++;
-    dropped.push({ query_label: c.label, title: c.title, url: c.url, reason: "Not checked this run (page check limit reached); run the search again" });
-  }
-  const checks = await inBatches(toCheck, 8, async (c) => ({ c, check: await checkPage(c.url, c.title, c.snippet, settings.states) }));
-
   const rows: Record<string, unknown>[] = [];
-  for (const { c, check } of checks) {
-    const st = stats.get(c.label)!;
-    if (check.drop) {
-      st.dropped++;
-      dropped.push({ query_label: c.label, title: c.title, url: c.url, reason: check.drop });
+  for (const [url, { bid, label }] of found) {
+    const st = stats.get(label)!;
+    if (existing.has(url)) {
+      st.seen_before++;
+      await supabase
+        .from("bids")
+        .update({ last_seen_at: new Date().toISOString(), last_run_id: runId, due_date: bid.dueDate, due_text: bid.dueText })
+        .eq("url", url);
       continue;
     }
     st.new++;
     rows.push({
-      url: c.url,
-      title: cleanTitle(c.title),
-      agency: check.agency,
-      state: check.state,
-      snippet: c.snippet,
-      query_label: c.label,
-      due_date: check.due?.date ?? null,
-      due_text: check.due?.text ?? null,
-      flags: check.flags,
+      url,
+      title: bid.title,
+      agency: bid.agency,
+      state: bid.state,
+      snippet: bid.detail,
+      query_label: label,
+      due_date: bid.dueDate,
+      due_text: bid.dueText,
+      flags: [],
       last_run_id: runId,
     });
   }
@@ -442,19 +319,20 @@ export async function runBidSearch(): Promise<string> {
     if (error) throw new Error(`Could not save bids: ${error.message}`);
   }
 
+  const notConnected = settings.states.filter((s) => !Object.values(SOURCES).some((src) => src.state.toLowerCase() === s.toLowerCase()));
+  const notes = [...errors, ...(notConnected.length ? [`Not connected yet, so not searched: ${notConnected.join(", ")}`] : [])];
   const perQuery = [...stats.values()];
-  const failed = perQuery.filter((p) => p.error);
   await supabase
     .from("bid_runs")
     .update({
       finished_at: new Date().toISOString(),
-      total_returned: totalReturned,
+      total_returned: perQuery.reduce((n, p) => n + p.returned, 0),
       total_new: rows.length,
-      total_seen_before: old.length,
+      total_seen_before: found.size - rows.length,
       total_dropped: dropped.length,
       per_query: perQuery,
       dropped,
-      error: failed.length ? `${failed.length} of ${perQuery.length} searches failed. First error: ${failed[0].error}` : null,
+      error: notes.length ? notes.join(" · ") : null,
     })
     .eq("id", runId);
   return runId;

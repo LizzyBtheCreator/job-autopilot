@@ -84,14 +84,17 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-semibold">State and local bids</h1>
-            <p className="text-xs text-stone-500">Separate from the job search. <Link className="underline" href="/bids/settings">Bid settings and searches</Link></p>
+            <p className="text-xs text-stone-500">
+              Open bids straight from NC eVP and the Georgia Procurement Registry. Separate from the job search.{" "}
+              <Link className="underline" href="/bids/settings">Bid settings and searches</Link>
+            </p>
           </div>
           <BidSearchButton />
         </div>
         {lastRun ? (
           <div className="space-y-2 text-sm">
             <p>
-              Last run {fmt(lastRun.started_at)}: <b>{lastRun.total_returned}</b> results from Google, <b>{lastRun.total_new}</b> new bids,{" "}
+              Last run {fmt(lastRun.started_at)}: <b>{lastRun.total_returned}</b> matches on the state portals, <b>{lastRun.total_new}</b> new open bids,{" "}
               <b>{lastRun.total_seen_before}</b> already in your list, <b>{lastRun.total_dropped}</b> filtered out.{" "}
               {lastRun.total_new + lastRun.total_seen_before > 0 && (
                 <Link className="text-teal-700 underline" href={`/bids?status=all&run=${lastRun.id}`}>Show this run&apos;s bids</Link>
