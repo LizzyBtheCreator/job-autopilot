@@ -1,4 +1,5 @@
 import "server-only";
+import { extractText, getDocumentProxy } from "unpdf";
 import { db } from "./db";
 import type { BidDropped, BidQuery, BidQueryStats, BidSettings } from "./bid-types";
 
@@ -9,9 +10,10 @@ import type { BidDropped, BidQuery, BidQueryStats, BidSettings } from "./bid-typ
 //    sites and the public bid portals.
 // 2. From the search result alone, federal sites, award and results pages, lists of many bids, and
 //    results from past years are dropped.
-// 3. Every remaining new result's page is opened and read. Closed, awarded, or cancelled bids, pages
-//    that list many bids, and bids whose due date has passed are dropped. The due date is saved, and
-//    license, insurance, bond, and site visit requirements are flagged.
+// 3. Every remaining new result's page or PDF is opened and read. Closed, awarded, or cancelled bids,
+//    pages that list many bids, documents from past years, and bids whose due date has passed are
+//    dropped. The due date is saved, and license, insurance, bond, and site visit requirements are flagged.
+// Only bids with a due date found on the page show as New. The rest wait under "Check date".
 // Every dropped result is kept with its reason so the search can be checked and tuned.
 
 // Government sites and the public bid portals that show one bid per page.
@@ -22,8 +24,10 @@ const FEDERAL_HOSTS = /(^|\.)(sam\.gov|fbo\.gov|gsa\.gov|usda\.gov|va\.gov|nps\.
 const FEDERAL_TEXT = /\b(sam\.gov|federal acquisition regulation|FAR 52\.|department of veterans affairs|U\.S\. Army|U\.S\. Navy|U\.S\. Air Force|army corps of engineers|national park service|forest service|USDA|federal bureau of prisons)\b/i;
 
 const RESULTS_PAGE = /\b(bid tab(ulation)?s?|bid results|award(ed)? notice|notice of (intent to )?award|intent to award|awarded to|bid award)\b/i;
-const LIST_TITLE = /^(current|open|active|available|upcoming)?\s*(bids?|bid opportunities|bids? (and|&) (rfps?|proposals|quotes)|solicitations|procurement( opportunities)?|purchasing( (department|division))?|rfps?|business opportunities|contracting opportunities)\b/i;
-const CLOSED_PAGE = /\b(status:?\s*(closed|awarded|cancel+ed)|(bid|solicitation|rfq|ifb|itb) (is |has been )?(closed|awarded|cancel+ed)|this (bid|solicitation|opportunity) (is |has )?(closed|been awarded|been cancel+ed))\b/i;
+const LIST_TITLE = /^(current|open|active|available|upcoming)?\s*(bids?|bid opportunities|bids? (and|&) (rfps?|proposals|quotes)|solicitations|procurement( opportunities)?|purchasing( (department|division))?|rfps?|business opportunities|contracting opportunities)\b|\b(bids? (and|&) rfps?|bid information|bid opportunities|current bids|open bids|procurement opportunities|open solicitations)\s*$/i;
+// Search results that are documents about something else, not a bid.
+const NOT_A_BID_TITLE = /\b(agenda|minutes|manual|newsletter|annual report|budget|request ?tracker|news|update|press release|ordinance|resolution|audit)\b/i;
+const CLOSED_PAGE = /\b(status:?\s*(closed|awarded|cancel+ed|under evaluation)|under evaluation|(bid|solicitation|rfq|ifb|itb) (is |has been )?(closed|awarded|cancel+ed)|this (bid|solicitation|opportunity) (is |has )?(closed|been awarded|been cancel+ed))\b/i;
 
 const MONTHS = "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
 const DATE = `(?:(?:${MONTHS})\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}|\\d{1,2}/\\d{1,2}/\\d{2,4}|\\d{4}-\\d{2}-\\d{2})`;
@@ -205,6 +209,11 @@ function snippetReason(url: string, title: string, snippet: string): string | nu
   if (FEDERAL_HOSTS.test(host)) return `Federal site (${host})`;
   if (FEDERAL_TEXT.test(text)) return "Federal bid";
   if (RESULTS_PAGE.test(title)) return "Award or results page, not an open bid";
+  if (/cancel+ed/i.test(`${title} ${path}`)) return "Cancelled bid";
+  if (NOT_A_BID_TITLE.test(cleanTitle(title))) return "Not a bid (agenda, manual, news, or similar)";
+  // Many sites put the year in the file's address, e.g. /2021/01/ or -2023-.
+  const urlYears = [...decodeURIComponent(path).matchAll(/(?:^|[/_\-])(20[12]\d)(?=[/_\-.]|$)/g)].map((m) => Number(m[1]));
+  if (urlYears.length && Math.max(...urlYears) < Number(today().slice(0, 4))) return `From an earlier year (${Math.max(...urlYears)}, in the link)`;
   const isPdf = /\.pdf$/i.test(path);
   if (!isPdf && LIST_TITLE.test(cleanTitle(title)) && !/\d{3,}/.test(path)) return "List of many bids, not a single bid";
   const years = yearsIn(text);
@@ -221,34 +230,53 @@ interface PageCheck {
   flags: string[];
 }
 
-// Opens the bid's page and reads it. PDFs and pages that can't be opened are kept with a flag.
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
+const MAX_PDF_BYTES = 8_000_000;
+
+// The text of the first pages of a PDF, where the due date and requirements are.
+async function pdfText(bytes: Uint8Array): Promise<string | null> {
+  try {
+    const pdf = await getDocumentProxy(bytes);
+    const { text } = await extractText(pdf, { mergePages: false });
+    return (text as string[]).slice(0, 6).join("\n");
+  } catch {
+    return null;
+  }
+}
+
+// Opens the bid's page or PDF and returns its text, or null when it can't be read.
+async function readBid(url: string): Promise<{ text: string; html: string | null; pdf: boolean } | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const type = res.headers.get("content-type") ?? "";
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const isPdf = /pdf/i.test(type) || (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46);
+    if (isPdf) {
+      if (bytes.length > MAX_PDF_BYTES) return null;
+      const text = await pdfText(bytes);
+      return text ? { text, html: null, pdf: true } : null;
+    }
+    const html = new TextDecoder().decode(bytes);
+    return { text: htmlToText(html), html, pdf: false };
+  } catch {
+    return null;
+  }
+}
+
+// Opens the bid's page or PDF and reads it. Bids that can't be read are kept with a flag.
 async function checkPage(url: string, title: string, snippet: string, states: string[]): Promise<PageCheck> {
   const result: PageCheck = { drop: null, due: null, state: null, agency: null, flags: [] };
-  const fallbackText = `${title}\n${snippet}`;
-  let html: string | null = null;
-  let isPdf = /\.pdf($|\?)/i.test(url);
-  if (!isPdf) {
-    try {
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
-          Accept: "text/html,application/xhtml+xml",
-        },
-        redirect: "follow",
-        signal: AbortSignal.timeout(8000),
-        cache: "no-store",
-      });
-      if (res.ok) {
-        if (/pdf/i.test(res.headers.get("content-type") ?? "")) isPdf = true;
-        else html = await res.text();
-      }
-    } catch {
-      html = null;
-    }
-  }
+  const read = await readBid(url);
 
-  if (!html) {
-    result.flags.push(isPdf ? "PDF: open it to check the due date and requirements" : "Could not open the page to check it: open the link");
+  if (!read) {
+    const fallbackText = `${title}\n${snippet}`;
+    result.flags.push("Could not read the bid: open it to check the due date");
     result.due = findDueDate(fallbackText);
     if (result.due && result.due.date < today()) result.drop = `Due date passed (${result.due.date})`;
     result.state = findState(fallbackText, url, states);
@@ -257,30 +285,40 @@ async function checkPage(url: string, title: string, snippet: string, states: st
     return result;
   }
 
-  const text = htmlToText(html);
-  const siteName = html.match(/<meta[^>]+property="og:site_name"[^>]+content="([^"]+)"/i)?.[1] ?? null;
+  const { text, html, pdf } = read;
+  const siteName = html?.match(/<meta[^>]+property="og:site_name"[^>]+content="([^"]+)"/i)?.[1] ?? null;
   result.agency = agencyFrom(title, url, siteName ? decodeEntities(siteName) : null);
   if (FEDERAL_TEXT.test(text.slice(0, 3000))) {
     result.drop = "Federal bid (found on the page)";
     return result;
   }
   if (CLOSED_PAGE.test(text)) {
-    result.drop = "Bid is closed, awarded, or cancelled";
+    result.drop = "Bid is closed, awarded, cancelled, or under evaluation";
     return result;
   }
-  const numbers = new Set(
-    [...text.matchAll(/\b(?:bid|solicitation|rfq|ifb|itb|rfp)\s*(?:#|no\.?|number)\s*:?\s*([\w-]{3,})/gi)].map((m) => m[1].toLowerCase()),
-  );
-  if (numbers.size > 4) {
-    result.drop = `List of many bids (${numbers.size} bid numbers on the page), not a single bid`;
-    return result;
+  if (!pdf) {
+    const numbers = new Set(
+      [...text.matchAll(/\b(?:bid|solicitation|rfq|ifb|itb|rfp)\s*(?:#|no\.?|number)\s*:?\s*([\w-]{3,})/gi)].map((m) => m[1].toLowerCase()),
+    );
+    if (numbers.size > 4) {
+      result.drop = `List of many bids (${numbers.size} bid numbers on the page), not a single bid`;
+      return result;
+    }
+  } else {
+    // A bid document only mentions past years if it is from a past year.
+    const years = yearsIn(text.slice(0, 15000));
+    const thisYear = Number(today().slice(0, 4));
+    if (years.length && Math.max(...years) < thisYear) {
+      result.drop = `From an earlier year (latest year in the document: ${Math.max(...years)})`;
+      return result;
+    }
   }
   result.due = findDueDate(text);
   if (result.due && result.due.date < today()) {
     result.drop = `Due date passed (${result.due.date})`;
     return result;
   }
-  if (!result.due) result.flags.push("Due date not found on the page: check the bid");
+  if (!result.due) result.flags.push(`Due date not found ${pdf ? "in the PDF" : "on the page"}: check the bid`);
   result.state = findState(`${title}\n${text.slice(0, 20000)}`, url, states);
   if (!result.state) result.flags.push("State not confirmed");
 
@@ -321,10 +359,15 @@ export async function runBidSearch(): Promise<string> {
   const runId = run.id as string;
 
   const stateTerms = settings.states.length ? `(${settings.states.map((s) => `"${s}"`).join(" OR ")})` : "";
+  // Your Serper plan rejects Google's date filter, so the year goes in the search words instead.
+  // In November and December, next year counts too, since bids posted now are often due in January.
+  const now = today();
+  const year = Number(now.slice(0, 4));
+  const yearTerms = Number(now.slice(5, 7)) >= 11 ? `(${year} OR ${year + 1})` : `${year}`;
   const results = await Promise.all(
     queries.map(async (q) => {
       try {
-        const r = await serper(`(${settings.bid_terms}) (${q.query}) ${stateTerms}`.trim(), settings);
+        const r = await serper(`(${settings.bid_terms}) (${q.query}) ${stateTerms} ${yearTerms}`.replace(/\s+/g, " ").trim(), settings);
         return { q, rows: r.rows, note: r.note, error: null as string | null };
       } catch (e) {
         return { q, rows: [] as SerperResult[], note: null, error: e instanceof Error ? e.message : String(e) };

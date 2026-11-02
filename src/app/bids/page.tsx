@@ -8,7 +8,10 @@ import { Flags } from "@/components/badges";
 
 export const dynamic = "force-dynamic";
 
-const TABS: (BidStatus | "all")[] = ["new", "bidding", "submitted", "won", "lost", "dismissed", "all"];
+// "check" holds new bids whose due date could not be read, so New only shows bids with a confirmed date.
+type Tab = BidStatus | "check" | "all";
+const TABS: Tab[] = ["new", "check", "bidding", "submitted", "won", "lost", "dismissed", "all"];
+const TAB_LABELS: Record<Tab, string> = { ...BID_STATUS_LABELS, check: "Check date", all: "All" };
 
 const BID_STATUS_COLORS: Record<BidStatus, string> = {
   new: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
@@ -36,12 +39,12 @@ function dueLabel(due: string | null) {
 export default async function BidsPage({ searchParams }: { searchParams: Promise<{ status?: string; run?: string }> }) {
   if (!(await currentUserEmail())) redirect("/login");
   const { status: rawStatus, run: runFilter } = await searchParams;
-  const status = (TABS as string[]).includes(rawStatus ?? "") ? (rawStatus as BidStatus | "all") : "new";
+  const status = (TABS as string[]).includes(rawStatus ?? "") ? (rawStatus as Tab) : "new";
   const supabase = db();
 
   const [{ data: runs, error: runErr }, { data: statusRows }] = await Promise.all([
     supabase.from("bid_runs").select("*").order("started_at", { ascending: false }).limit(1),
-    supabase.from("bids").select("status"),
+    supabase.from("bids").select("status, due_date"),
   ]);
   if (runErr) {
     return (
@@ -52,10 +55,15 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
   }
   const lastRun = (runs?.[0] ?? null) as BidRun | null;
   const counts: Record<string, number> = { all: statusRows?.length ?? 0 };
-  for (const r of (statusRows ?? []) as { status: string }[]) counts[r.status] = (counts[r.status] ?? 0) + 1;
+  for (const r of (statusRows ?? []) as { status: string; due_date: string | null }[]) {
+    const tab = r.status === "new" && !r.due_date ? "check" : r.status;
+    counts[tab] = (counts[tab] ?? 0) + 1;
+  }
 
   let q = supabase.from("bids").select("*").order("due_date", { ascending: true, nullsFirst: false }).limit(300);
-  if (status !== "all") q = q.eq("status", status);
+  if (status === "new") q = q.eq("status", "new").not("due_date", "is", null);
+  else if (status === "check") q = q.eq("status", "new").is("due_date", null);
+  else if (status !== "all") q = q.eq("status", status);
   if (runFilter && lastRun && runFilter === lastRun.id) q = q.eq("last_run_id", runFilter);
   const { data: bidRows } = await q;
   const bids = (bidRows ?? []) as Bid[];
@@ -143,11 +151,17 @@ export default async function BidsPage({ searchParams }: { searchParams: Promise
               href={`/bids?status=${t}`}
               className={`rounded-md px-3 py-1 text-sm ${t === status ? "bg-teal-700 text-white" : "bg-white text-stone-700 hover:bg-stone-100 dark:bg-stone-900 dark:text-stone-300"}`}
             >
-              {t === "all" ? "All" : BID_STATUS_LABELS[t]} ({counts[t] ?? 0})
+              {TAB_LABELS[t]} ({counts[t] ?? 0})
             </Link>
           ))}
         </div>
 
+        {status === "check" && (
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            These bids couldn&apos;t be read well enough to find a due date. Open each one: if it&apos;s still open, enter the due date on
+            its Price it page and it moves to New. If it&apos;s old or closed, dismiss it.
+          </p>
+        )}
         {bids.length === 0 ? (
           <p className="text-sm text-stone-500">Nothing here.</p>
         ) : (
