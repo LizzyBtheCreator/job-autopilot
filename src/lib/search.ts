@@ -4,13 +4,22 @@ import { clearanceReason, notAJobReason, notRemoteReason, parseSalary, salaryRea
 import type { DroppedResult, QueryStats, SearchQuery, Settings } from "./types";
 
 // Searching these application sites returns one posting per result instead of job-board lists.
-const ATS_SITES = "(site:greenhouse.io OR site:lever.co OR site:ashbyhq.com OR site:myworkdayjobs.com OR site:apply.workable.com OR site:icims.com)";
+// Google limits how long a query can be, so the sites go out in groups, one search per group.
+// Workday is left out on purpose: its applications are long and none of them led to an interview.
+const ATS_SITE_GROUPS = [
+  ["greenhouse.io", "lever.co", "ashbyhq.com", "apply.workable.com", "icims.com"],
+  ["smartrecruiters.com", "jobvite.com", "bamboohr.com", "breezy.hr", "recruitee.com", "ats.rippling.com", "applytojob.com"],
+];
+const SITE_FILTERS = ATS_SITE_GROUPS.map((g) => `(${g.map((s) => `site:${s}`).join(" OR ")})`);
+
+// Most results pages read per site group when Serper only returns 10 results at a time.
+const MAX_PAGES = 3;
 
 // Sites left out of open-web queries. LinkedIn, Indeed and the other big aggregators block page
-// fetching, so a tailored resume could not read the full posting.
+// fetching, so a tailored resume could not read the full posting. Workday is left out by choice.
 export const EXCLUDED_SITES = [
   "linkedin.com", "indeed.com", "glassdoor.com", "ziprecruiter.com", "monster.com",
-  "careerbuilder.com", "simplyhired.com", "salary.com",
+  "careerbuilder.com", "simplyhired.com", "salary.com", "myworkdayjobs.com",
 ];
 
 interface SerperResult {
@@ -37,23 +46,61 @@ async function serperCall(body: Record<string, unknown>): Promise<{ ok: true; ro
 
 // Serper's free plan rejects some options ("Query pattern not allowed for free accounts").
 // Try the most precise request first, then step down to what the plan accepts, and say which one worked.
-async function serper(query: string, exclusions: string, settings: Settings): Promise<{ rows: SerperResult[]; note: string | null }> {
-  const precise: Record<string, unknown> = { q: `${query} ${ATS_SITES}`, num: settings.results_per_query, gl: "us", hl: "en" };
+// When only 10 results come back at a time, later pages are read too, up to Results per query.
+async function serper(query: string, sites: string, exclusions: string, settings: Settings): Promise<{ rows: SerperResult[]; note: string | null; openWeb: boolean }> {
+  const precise: Record<string, unknown> = { q: `${query} ${sites}`, num: settings.results_per_query, gl: "us", hl: "en" };
   if (settings.recency !== "any") precise.tbs = `qdr:${settings.recency}`;
-  const attempts: { body: Record<string, unknown>; note: string | null }[] = [
-    { body: precise, note: null },
-    { body: { q: `${query} ${ATS_SITES}`, num: 10 }, note: "Serper plan limit: ran without the date filter, 10 results" },
-    { body: { q: `${query} ${exclusions}`, num: 10 }, note: "Serper plan limit: searched the open web instead of application sites" },
-    { body: { q: query, num: 10 }, note: "Serper plan limit: searched the open web with no site exclusions" },
+  const attempts: { body: Record<string, unknown>; note: string | null; openWeb: boolean }[] = [
+    { body: precise, note: null, openWeb: false },
+    { body: { q: `${query} ${sites}`, num: 10 }, note: "Serper plan limit: ran without the date filter, 10 results per page", openWeb: false },
+    { body: { q: `${query} ${exclusions}`, num: 10 }, note: "Serper plan limit: searched the open web instead of application sites", openWeb: true },
+    { body: { q: query, num: 10 }, note: "Serper plan limit: searched the open web with no site exclusions", openWeb: true },
   ];
   let last = "";
   for (const a of attempts) {
     const r = await serperCall(a.body);
-    if (r.ok) return { rows: r.rows, note: a.note };
+    if (r.ok) {
+      const rows = [...r.rows];
+      let note = a.note;
+      const pages = a.body.num === 10 ? Math.min(MAX_PAGES, Math.ceil(settings.results_per_query / 10)) : 1;
+      // A short page means Google has nothing more for this search.
+      let lastCount = r.rows.length;
+      for (let page = 2; page <= pages && lastCount >= 10; page++) {
+        const more = await serperCall({ ...a.body, page });
+        if (!more.ok) {
+          note = `${note ? `${note}; ` : ""}page ${page} not read (Serper returned ${more.status})`;
+          break;
+        }
+        rows.push(...more.rows);
+        lastCount = more.rows.length;
+      }
+      return { rows, note, openWeb: a.openWeb };
+    }
     last = `Serper returned ${r.status}: ${r.text}`;
     if (!(r.status === 400 && /not allowed/i.test(r.text))) break;
   }
   throw new Error(last);
+}
+
+// Runs one query against every site group. If the plan forces an open-web search, that search
+// already covers every site, so the remaining groups are skipped instead of repeating it.
+async function searchAllSites(query: string, exclusions: string, settings: Settings): Promise<{ rows: SerperResult[]; note: string | null }> {
+  const rows: SerperResult[] = [];
+  const notes: string[] = [];
+  let firstError: unknown = null;
+  for (const sites of SITE_FILTERS) {
+    try {
+      const r = await serper(query, sites, exclusions, settings);
+      rows.push(...r.rows);
+      if (r.note && !notes.includes(r.note)) notes.push(r.note);
+      if (r.openWeb) break;
+    } catch (e) {
+      firstError ??= e;
+    }
+  }
+  // Only a failure of every group fails the query; otherwise the results that came back are kept.
+  if (!rows.length && firstError) throw firstError;
+  return { rows, note: notes.join("; ") || null };
 }
 
 function normalizeUrl(raw: string): string {
@@ -96,8 +143,8 @@ function parseTitleAndCompany(rawTitle: string, url: string): { title: string; c
       const u = new URL(url);
       const host = u.hostname.replace(/^www\./, "");
       const seg = u.pathname.split("/").filter(Boolean)[0];
-      if (/greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|breezy\.hr|jazzhr|bamboohr/.test(host) && seg) company = seg;
-      else if (/myworkdayjobs\.com|icims\.com|applytojob\.com|paylocity|ultipro|recruitee/.test(host)) company = host.split(".")[0];
+      if (/greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|smartrecruiters\.com|jobvite\.com|rippling\.com/.test(host) && seg) company = seg;
+      else if (/myworkdayjobs\.com|icims\.com|applytojob\.com|paylocity|ultipro|recruitee|bamboohr|breezy\.hr/.test(host)) company = host.split(".")[0];
       else company = host.split(".").slice(-2, -1)[0] ?? host;
       company = company.replace(/^(careers|jobs)[-_]/i, "").replace(/[-_](careers|jobs)$/i, "").replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     } catch {
@@ -142,7 +189,7 @@ export async function runSearch(): Promise<string> {
   const results = await Promise.all(
     queries.map(async (q) => {
       try {
-        const r = await serper(q.query, exclusions, settings);
+        const r = await searchAllSites(q.query, exclusions, settings);
         return { q, rows: r.rows, note: r.note, error: null as string | null };
       } catch (e) {
         return { q, rows: [] as SerperResult[], note: null, error: e instanceof Error ? e.message : String(e) };
@@ -166,7 +213,7 @@ export async function runSearch(): Promise<string> {
       };
 
       if (!url || !rawTitle) { drop("Missing link or title"); continue; }
-      if (seenThisRun.has(url)) { drop("Duplicate of a result from an earlier query in this run"); continue; }
+      if (seenThisRun.has(url)) { drop("Duplicate of another result in this run"); continue; }
       seenThisRun.add(url);
 
       const salary = parseSalary(text);

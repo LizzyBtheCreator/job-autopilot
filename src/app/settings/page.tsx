@@ -22,10 +22,12 @@ export default async function SettingsPage() {
       <section className="space-y-2">
         <h2 className="font-semibold">Search queries</h2>
         <p className="text-sm text-stone-500">
-          Each query runs on Google through Serper, limited to employer application sites (Greenhouse, Lever, Ashby,
-          Workday, Workable, iCIMS) so every result is a single posting. If your Serper plan does not allow that, it
-          searches the open web instead and leaves out these sites, whose postings the app can&apos;t read:{" "}
-          {EXCLUDED_SITES.join(", ")}.
+          Each query runs on Google through Serper, limited to employer application sites so every result is a single
+          posting. The sites go out in two searches per query: Greenhouse, Lever, Ashby, Workable and iCIMS, then
+          SmartRecruiters, Jobvite, BambooHR, Breezy, Recruitee, Rippling and JazzHR. Workday is not searched. When Serper
+          returns only 10 results at a time, up to 3 pages are read per search, set by Results per query (20 means 2
+          pages), and each page uses one Serper search. If your Serper plan does not allow application sites, it
+          searches the open web instead and leaves out these sites: {EXCLUDED_SITES.join(", ")}.
         </p>
         <QueriesEditor queries={(data ?? []) as SearchQuery[]} />
       </section>

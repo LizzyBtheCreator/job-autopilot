@@ -72,7 +72,11 @@ function isAtsHost(host: string): boolean {
 function looksLikeSinglePosting(u: URL): boolean {
   const host = u.hostname.toLowerCase().replace(/^www\./, "");
   const segs = u.pathname.toLowerCase().split("/").filter(Boolean);
-  if (isAtsHost(host)) return segs.length >= 2 || [...u.searchParams.keys()].some((k) => ID_PARAM.test(k));
+  if (isAtsHost(host)) {
+    // A company's job list on these sites ends in /jobs or /careers (e.g. ats.rippling.com/acme/jobs).
+    if (/^(jobs|careers|openings|positions)$/.test(segs[segs.length - 1] ?? "")) return false;
+    return segs.length >= 2 || [...u.searchParams.keys()].some((k) => ID_PARAM.test(k));
+  }
   if ([...u.searchParams.keys()].some((k) => ID_PARAM.test(k))) return true;
   if (segs.some((seg) => /\d{4,}|[0-9a-f]{8,}/.test(seg))) return true;
   for (let i = 1; i < segs.length; i++) {
