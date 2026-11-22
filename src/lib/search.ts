@@ -15,6 +15,9 @@ const SITE_FILTERS = ATS_SITE_GROUPS.map((g) => `(${g.map((s) => `site:${s}`).jo
 // Most results pages read per site group when Serper only returns 10 results at a time.
 const MAX_PAGES = 3;
 
+// How many queries search at the same time.
+const QUERIES_AT_ONCE = 3;
+
 // Sites left out of open-web queries. LinkedIn, Indeed and the other big aggregators block page
 // fetching, so a tailored resume could not read the full posting. Workday is left out by choice.
 export const EXCLUDED_SITES = [
@@ -29,15 +32,25 @@ interface SerperResult {
   date?: string;
 }
 
+// Serper answers 429 when too many requests arrive at once; those are retried after a short wait.
+const RETRY_WAITS_MS = [1500, 4000];
+
 async function serperCall(body: Record<string, unknown>): Promise<{ ok: true; rows: SerperResult[] } | { ok: false; status: number; text: string }> {
   const key = process.env.SERPER_API_KEY;
   if (!key) throw new Error("SERPER_API_KEY is not set in Vercel");
-  const res = await fetch("https://google.serper.dev/search", {
-    method: "POST",
-    headers: { "X-API-KEY": key, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const send = () =>
+    fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": key, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+  let res = await send();
+  for (const wait of RETRY_WAITS_MS) {
+    if (res.status !== 429) break;
+    await new Promise((r) => setTimeout(r, wait));
+    res = await send();
+  }
   const text = await res.text();
   if (!res.ok) return { ok: false, status: res.status, text: text.slice(0, 200) };
   const data = JSON.parse(text) as { organic?: SerperResult[] };
@@ -88,7 +101,7 @@ async function searchAllSites(query: string, exclusions: string, settings: Setti
   const rows: SerperResult[] = [];
   const notes: string[] = [];
   let firstError: unknown = null;
-  for (const sites of SITE_FILTERS) {
+  for (const [i, sites] of SITE_FILTERS.entries()) {
     try {
       const r = await serper(query, sites, exclusions, settings);
       rows.push(...r.rows);
@@ -96,6 +109,7 @@ async function searchAllSites(query: string, exclusions: string, settings: Setti
       if (r.openWeb) break;
     } catch (e) {
       firstError ??= e;
+      notes.push(`site group ${i + 1} not searched (${e instanceof Error ? e.message : String(e)})`);
     }
   }
   // Only a failure of every group fails the query; otherwise the results that came back are kept.
@@ -185,14 +199,23 @@ export async function runSearch(): Promise<string> {
   let totalNew = 0;
   let totalSeenBefore = 0;
 
-  // All queries go out at once; each one's failure is recorded and does not stop the others.
-  const results = await Promise.all(
-    queries.map(async (q) => {
-      try {
-        const r = await searchAllSites(q.query, exclusions, settings);
-        return { q, rows: r.rows, note: r.note, error: null as string | null };
-      } catch (e) {
-        return { q, rows: [] as SerperResult[], note: null, error: e instanceof Error ? e.message : String(e) };
+  // A few queries run at a time so Serper does not turn requests away; each one's failure is
+  // recorded and does not stop the others. Results keep the order of the queries.
+  const runOne = async (q: SearchQuery) => {
+    try {
+      const r = await searchAllSites(q.query, exclusions, settings);
+      return { q, rows: r.rows, note: r.note, error: null as string | null };
+    } catch (e) {
+      return { q, rows: [] as SerperResult[], note: null, error: e instanceof Error ? e.message : String(e) };
+    }
+  };
+  const results: Awaited<ReturnType<typeof runOne>>[] = new Array(queries.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(QUERIES_AT_ONCE, queries.length) }, async () => {
+      while (next < queries.length) {
+        const i = next++;
+        results[i] = await runOne(queries[i]);
       }
     }),
   );
