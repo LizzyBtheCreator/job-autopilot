@@ -58,7 +58,7 @@ export const WORK_HISTORY: { key: string; heading: string; selfOwned: boolean; b
     heading: "Federal Contracting Solutions - Senior Business Development Consultant (Contract/Consulting, Remote) | June 2021 to December 2024",
     selfOwned: false,
     bullets: [
-      "Drove $320M+ in government contract activity with a sustained 72% win rate across DoD military departments (Army, Navy, Air Force, Space Force, SOCOM, CYBERCOM, DIA, DISA), HUD, HHS, and GSA",
+      "Drove $472M+ in government contract activity with a sustained 72% win rate across DoD military departments (Army, Navy, Air Force, Space Force, SOCOM, CYBERCOM, DIA, DISA), HUD, HHS, and GSA",
       "Applied Shipley methodology to lead capture campaigns 6+ months prior to RFP release; developed win strategies, sales themes, and differentiating narratives for competitive RFPs, RFIs, BAAs, OTAs, and IDIQ task orders",
       "Briefed senior leadership and executive stakeholders on capture strategy, competitive positioning, and go/no-go recommendations for high-value pursuits",
       "Conducted competitive intelligence and win/loss analysis; identified competitor vulnerabilities and developed mitigation strategies through teaming, key partnerships, and solution differentiation",
@@ -131,12 +131,12 @@ export const CERTIFICATIONS = [
   "SHRM Certified Professional (SHRM-CP) (in progress)",
 ];
 
-// The one education line shown on every resume.
-export const EDUCATION_LINE = "MS Information Technology (accelerated bachelor's-to-master's program), Western Governors University, in progress";
+// The one education line, shown only when the posting mentions a degree, education, or school.
+export const EDUCATION_LINE = "Information Technology, Western Governors University, in progress (expected graduation late 2027)";
 
 export const SKILLS = `Sales and Business Development: CRM tools (Salesforce, HubSpot, GoHighLevel), consultative selling, pipeline management (200+ accounts), lead generation, SaaS sales, social media management and digital marketing, content creation and brand strategy, Facebook/Instagram paid advertising, community management, account management, quota attainment (120%), $3M+ in recurring revenue closed
 
-Government Contracting and Compliance: Capture management, proposal management (Shipley methodology), federal BD lifecycle ($320M+ contract activity, 72% win rate), SBA 8(a)/GSA/IDIQ/GWAC/OTA/BAA vehicles, FAR/DFARS compliance, teaming partnerships, tribal procurement (ANCs), 2 CFR Part 200 (Uniform Guidance), CDBG full program lifecycle, Davis-Bacon labor standards, URA, environmental review (24 CFR Part 58), HUD/IDIS reporting, single audit preparation, SAM.gov navigation, EDGAR compliance, grant writing and federal proposal development, LIHTC/HOME/HUD-VASH/CDFI program knowledge, win strategy and price-to-win, 100+ client engagements with zero audit findings
+Government Contracting and Compliance: Capture management, proposal management (Shipley methodology), federal BD lifecycle ($472M+ contract activity, 72% win rate), SBA 8(a)/GSA/IDIQ/GWAC/OTA/BAA vehicles, FAR/DFARS compliance, teaming partnerships, tribal procurement (ANCs), 2 CFR Part 200 (Uniform Guidance), CDBG full program lifecycle, Davis-Bacon labor standards, URA, environmental review (24 CFR Part 58), HUD/IDIS reporting, single audit preparation, SAM.gov navigation, EDGAR compliance, grant writing and federal proposal development, LIHTC/HOME/HUD-VASH/CDFI program knowledge, win strategy and price-to-win, 100+ client engagements with zero audit findings
 
 IT and Technical: Syxsense (endpoint security, patch management, automation), cloud platform administration, CRM administration, technical client support, remote troubleshooting, IT project coordination, Next.js, Supabase, Stripe integration, Anthropic API
 
@@ -150,7 +150,7 @@ Tools: Microsoft Office 365, Salesforce, HubSpot, GoHighLevel, Gusto, ADP, Quick
 
 export const CATEGORY_FOCUS: Record<Category, string> = {
   proposals:
-    "PROPOSALS and CAPTURE role. Lead with: $320M+ in government contract activity, 72% proposal win rate, Shipley methodology, full proposal lifecycle (RFI through award), capture management 6+ months pre-RFP, win strategy development, competitive intelligence, teaming strategy. Anchor role is Federal Contracting Solutions. Include BidWinAlert as a SaaS product built on 18 years of proposal expertise. Highlight DoD pursuits (Army, Navy, Air Force, Space Force, SOCOM, CYBERCOM, DIA, DISA), IDIQ task orders, OTAs, BAAs, building and training pursuit teams of 30+.",
+    "PROPOSALS and CAPTURE role. Lead with: $472M+ in government contract activity, 72% proposal win rate, Shipley methodology, full proposal lifecycle (RFI through award), capture management 6+ months pre-RFP, win strategy development, competitive intelligence, teaming strategy. Anchor role is Federal Contracting Solutions. Include BidWinAlert as a SaaS product built on 18 years of proposal expertise. Highlight DoD pursuits (Army, Navy, Air Force, Space Force, SOCOM, CYBERCOM, DIA, DISA), IDIQ task orders, OTAs, BAAs, building and training pursuit teams of 30+.",
   contracts:
     "CONTRACTS, CONTRACT ADMINISTRATION, or PROCUREMENT role. Lead with: FAR/DFARS compliance, cost/price proposals across FFP, CPFF, T&M, and fixed-price contract types, 100+ client engagements with zero audit findings, SBA 8(a)/IDIQ/GWAC/OTA/BAA vehicles, teaming agreements and subcontractor flow-downs, SAM.gov navigation. Anchor roles are Federal Contracting Solutions and Precise Consulting Services.",
   compliance:
@@ -160,7 +160,7 @@ export const CATEGORY_FOCUS: Record<Category, string> = {
   program_ops:
     "PROGRAM MANAGEMENT role. Lead with: PMP-certified program management, building, training, and leading teams of 30+, 18+ years of federal program delivery, stakeholder engagement, 35% operational efficiency improvement, training design and delivery. Anchor roles are Federal Contracting Solutions and Precise Consulting Services. Include BidWinAlert as evidence of building a program from scratch.",
   business_dev:
-    "BUSINESS DEVELOPMENT role. Lead with: $320M+ in government contract activity, 72% win rate, $3M+ commercial recurring revenue, 120% quota attainment, 200+ account pipeline, Salesforce/HubSpot/GoHighLevel, strategic partnerships and teaming agreements. Anchor roles are Federal Contracting Solutions, Syxsense, and GoHighLevel.",
+    "BUSINESS DEVELOPMENT role. Lead with: $472M+ in government contract activity, 72% win rate, $3M+ commercial recurring revenue, 120% quota attainment, 200+ account pipeline, Salesforce/HubSpot/GoHighLevel, strategic partnerships and teaming agreements. Anchor roles are Federal Contracting Solutions, Syxsense, and GoHighLevel.",
   consulting:
     "CONSULTING role. Lead with: 18+ years of federal consulting across government contracting, compliance, grants, and community development, 100+ client engagements with zero audit findings, active CMMC advisory practice (Defense Comply), compliance training delivered across NC, SC, and GA. Anchor role is Precise Consulting Services.",
   public_sector:
